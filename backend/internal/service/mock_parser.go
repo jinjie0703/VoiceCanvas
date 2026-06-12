@@ -50,7 +50,7 @@ func (p *MockParser) ParseStream(ctx context.Context, text string, state []model
 		} else {
 			shapeType := "rectangle"
 			if strings.Contains(textLower, "圆") || strings.Contains(textLower, "circle") {
-				shapeType = "circle"
+				shapeType = "ellipse"
 			} else if strings.Contains(textLower, "三角") {
 				shapeType = "triangle"
 			} else if strings.Contains(textLower, "菱形") || strings.Contains(textLower, "diamond") {

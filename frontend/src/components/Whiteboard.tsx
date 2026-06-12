@@ -15,6 +15,28 @@ export interface WhiteboardRef {
   executeActions: (actions: DrawAction[]) => void;
 }
 
+// Bulletproof property sanitizers for TLDraw API
+const sanitizeColor = (color: any, defaultColor: string): string => {
+  if (!color || typeof color !== 'string') return defaultColor;
+  const lowerColor = color.toLowerCase();
+  if (lowerColor === 'gray') return 'grey';
+  
+  const validColors = ["black", "grey", "light-violet", "violet", "blue", "light-blue", "yellow", "orange", "green", "light-green", "light-red", "red", "white"];
+  if (validColors.includes(lowerColor)) return lowerColor;
+  return defaultColor;
+};
+
+const sanitizeGeo = (geo: any, defaultGeo: string): string => {
+  if (!geo || typeof geo !== 'string') return defaultGeo;
+  const lowerGeo = geo.toLowerCase();
+  if (lowerGeo === 'circle') return 'ellipse';
+  if (lowerGeo === 'square') return 'rectangle';
+  
+  const validGeos = ["rectangle", "ellipse", "triangle", "diamond", "pentagon", "hexagon", "octagon", "star", "rhombus", "oval", "cloud"];
+  if (validGeos.includes(lowerGeo)) return lowerGeo;
+  return defaultGeo;
+};
+
 export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount, hideUi }, ref) => {
   const editorRef = useRef<Editor | null>(null);
 
@@ -56,11 +78,21 @@ export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount,
     actions.forEach((action) => {
       try {
         if (action.command === 'create_shape') {
-          const { x, y } = getCoordsFromSemantic(action.position || 'center', canvasW, canvasH);
+          let x, y;
+          if (typeof action.x === 'number' && typeof action.y === 'number') {
+            x = canvasW / 2 + action.x;
+            y = canvasH / 2 + action.y;
+          } else {
+            const coords = getCoordsFromSemantic(action.position || 'center', canvasW, canvasH);
+            x = coords.x;
+            y = coords.y;
+          }
+          
           const shapeType = action.type === 'note' ? 'note' : 'geo';
           
+          const defaultColor = shapeType === 'note' ? 'yellow' : 'blue';
           const shapeProps: Record<string, unknown> = {
-            color: action.props?.color || (shapeType === 'note' ? 'yellow' : 'blue'),
+            color: sanitizeColor(action.props?.color, defaultColor),
           };
 
           if (shapeType === 'note') {
@@ -69,7 +101,7 @@ export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount,
             shapeProps.richText = toRichText(action.text || '');
             shapeProps.w = action.props?.w || 150;
             shapeProps.h = action.props?.h || 100;
-            shapeProps.geo = action.props?.geo || 'rectangle';
+            shapeProps.geo = sanitizeGeo(action.props?.geo, 'rectangle');
           }
           
           const shapeId = action.target_id ? (action.target_id as TLShapeId) : undefined;
@@ -87,6 +119,13 @@ export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount,
           if (!currentShape) return;
           
           const cleanProps = { ...action.props };
+          if ('color' in cleanProps) {
+            cleanProps.color = sanitizeColor(cleanProps.color, (currentShape.props as any).color || 'black');
+          }
+          if ('geo' in cleanProps && currentShape.type === 'geo') {
+            cleanProps.geo = sanitizeGeo(cleanProps.geo, (currentShape.props as any).geo || 'rectangle');
+          }
+          
           if (currentShape.type === 'note') {
             delete cleanProps.w;
             delete cleanProps.h;
@@ -117,7 +156,17 @@ export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount,
         } else if (action.command === 'create_svg') {
           const svgCode = action.props?.svgCode as string;
           if (!svgCode) return;
-          const { x, y } = getCoordsFromSemantic(action.position || 'center', canvasW, canvasH);
+          
+          let x, y;
+          if (typeof action.x === 'number' && typeof action.y === 'number') {
+            x = canvasW / 2 + action.x;
+            y = canvasH / 2 + action.y;
+          } else {
+            const coords = getCoordsFromSemantic(action.position || 'center', canvasW, canvasH);
+            x = coords.x;
+            y = coords.y;
+          }
+          
           const w = (action.props?.w as number) || 300;
           const h = (action.props?.h as number) || 300;
 
@@ -166,7 +215,7 @@ export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount,
               start: { x: 0, y: 0 },
               end: { x: 100, y: 100 },
               richText: toRichText(action.text || ''),
-              color: (action.props?.color as 'black' | 'red' | 'blue' | 'green' | 'orange' | 'yellow') || 'black',
+              color: sanitizeColor(action.props?.color, 'black'),
               bend: 40,
             },
           } as Parameters<Editor['createShape']>[0]);

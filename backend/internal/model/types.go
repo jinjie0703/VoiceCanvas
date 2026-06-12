@@ -23,6 +23,8 @@ type DrawAction struct {
 	TargetID string                 `json:"target_id,omitempty"`
 	Props    map[string]interface{} `json:"props,omitempty"`    // e.g. color, geo, w, h, text
 	Position string                 `json:"position,omitempty"` // "center", "top_left", etc.
+	X        *float64               `json:"x,omitempty"`
+	Y        *float64               `json:"y,omitempty"`
 	Text     string                 `json:"text,omitempty"`
 }
 

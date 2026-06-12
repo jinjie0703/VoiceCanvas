@@ -14,13 +14,15 @@ import (
 
 type WebSocketHandler struct {
 	parserService service.ParserService
+	enhancer      *service.Enhancer
 	upgrader      websocket.Upgrader
 }
 
 // NewWebSocketHandler creates a new WebSocketHandler instance.
-func NewWebSocketHandler(parserService service.ParserService) *WebSocketHandler {
+func NewWebSocketHandler(parserService service.ParserService, enhancer *service.Enhancer) *WebSocketHandler {
 	return &WebSocketHandler{
 		parserService: parserService,
+		enhancer:      enhancer,
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -43,6 +45,7 @@ func (h *WebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Client connected via WebSocket")
 
 	ctx := context.Background()
+	var chatHistory []string
 
 	for {
 		_, messageBytes, err := conn.ReadMessage()
@@ -60,8 +63,31 @@ func (h *WebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		slog.Info("Received message", "text", clientMsg.Text, "state_len", len(clientMsg.CanvasState))
 
+		finalPrompt := clientMsg.Text
+
+		if h.enhancer != nil {
+			enhRes, err := h.enhancer.Enhance(ctx, clientMsg.Text, clientMsg.CanvasState, chatHistory)
+			if err == nil {
+				if !enhRes.IsValid {
+					slog.Info("Enhancer rejected input", "feedback", enhRes.FeedbackMsg)
+					h.sendFeedback(conn, enhRes.FeedbackMsg)
+					continue
+				}
+				finalPrompt = enhRes.EnhancedPrompt
+				slog.Info("Prompt enhanced", "original", clientMsg.Text, "enhanced", finalPrompt)
+			} else {
+				slog.Warn("Enhancer failed, falling back to raw text", "error", err)
+			}
+		}
+
+		// Keep only last 3 turns
+		chatHistory = append(chatHistory, clientMsg.Text)
+		if len(chatHistory) > 3 {
+			chatHistory = chatHistory[1:]
+		}
+
 		// Process using LLM Parser or Mock Parser, streaming chunks back
-		h.parserService.ParseStream(ctx, clientMsg.Text, clientMsg.CanvasState, func(chunk model.ServerResponse) {
+		h.parserService.ParseStream(ctx, finalPrompt, clientMsg.CanvasState, func(chunk model.ServerResponse) {
 			// Ensure raw text is set for the chunk
 			chunk.RawText = clientMsg.Text
 
@@ -84,5 +110,14 @@ func (h *WebSocketHandler) sendError(conn *websocket.Conn, message string) {
 		RawText: "Error: " + message,
 	}
 	bytes, _ := json.Marshal(errResp)
+	_ = conn.WriteMessage(websocket.TextMessage, bytes)
+}
+
+func (h *WebSocketHandler) sendFeedback(conn *websocket.Conn, message string) {
+	resp := model.ServerResponse{
+		Actions: []model.DrawAction{},
+		RawText: message,
+	}
+	bytes, _ := json.Marshal(resp)
 	_ = conn.WriteMessage(websocket.TextMessage, bytes)
 }

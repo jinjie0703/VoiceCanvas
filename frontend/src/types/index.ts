@@ -13,6 +13,8 @@ export interface DrawAction {
   target_id?: string;
   props?: Record<string, unknown>;
   position?: string;
+  x?: number;
+  y?: number;
   text?: string;
 }
 
