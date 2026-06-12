@@ -1,0 +1,33 @@
+package model
+
+// CanvasElement represents a shape or note element on the whiteboard.
+type CanvasElement struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"` // "geo" or "note"
+	Geo      string `json:"geo,omitempty"`
+	Color    string `json:"color"`
+	Position string `json:"position"`
+	Text     string `json:"text,omitempty"`
+}
+
+// ClientMessage is the message payload sent by the frontend via WebSocket.
+type ClientMessage struct {
+	Text        string          `json:"text"`
+	CanvasState []CanvasElement `json:"canvas_state"`
+}
+
+// DrawAction represents a single mutation instruction sent back to the frontend.
+type DrawAction struct {
+	Command  string                 `json:"command"`            // "create_shape", "modify_shape", "delete_shape", "clear_canvas"
+	Type     string                 `json:"type,omitempty"`     // "geo", "note"
+	TargetID string                 `json:"target_id,omitempty"`
+	Props    map[string]interface{} `json:"props,omitempty"`    // e.g. color, geo, w, h, text
+	Position string                 `json:"position,omitempty"` // "center", "top_left", etc.
+	Text     string                 `json:"text,omitempty"`
+}
+
+// ServerResponse is the JSON response wrapper containing parsed actions and feedback.
+type ServerResponse struct {
+	Actions []DrawAction `json:"actions"`
+	RawText string       `json:"raw_text,omitempty"` // Echoed user voice input for verification
+}
