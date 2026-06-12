@@ -3,15 +3,18 @@ import type { ServerResponse, CanvasElement } from '../types';
 
 interface UseWebSocketProps {
   onMessage: (response: ServerResponse) => void;
+  getCanvasState?: () => CanvasElement[];
 }
 
-export function useWebSocket({ onMessage }: UseWebSocketProps) {
+export function useWebSocket({ onMessage, getCanvasState }: UseWebSocketProps) {
   const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected'>('disconnected');
   const wsRef = useRef<WebSocket | null>(null);
   const onMessageRef = useRef(onMessage);
+  const getCanvasStateRef = useRef(getCanvasState);
 
   useEffect(() => {
     onMessageRef.current = onMessage;
+    getCanvasStateRef.current = getCanvasState;
   });
 
   useEffect(() => {
@@ -39,6 +42,18 @@ export function useWebSocket({ onMessage }: UseWebSocketProps) {
       socket.onmessage = (event) => {
         try {
           const response: ServerResponse = JSON.parse(event.data);
+          
+          // Handle Agent observation request
+          if (response.raw_text === '__request_observation__' && getCanvasStateRef.current) {
+            const state = getCanvasStateRef.current();
+            const obsPayload = {
+              text: '__observation__',
+              canvas_state: state,
+            };
+            socket.send(JSON.stringify(obsPayload));
+            return;
+          }
+          
           onMessageRef.current(response);
         } catch (e) {
           console.error('Failed to parse server response:', e);

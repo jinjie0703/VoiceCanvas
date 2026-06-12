@@ -49,6 +49,7 @@ export default function App() {
 
   const { wsStatus, sendRequest } = useWebSocket({
     onMessage: handleServerMessage,
+    getCanvasState: () => whiteboardRef.current?.getCanvasStateSnapshot() ?? [],
   });
 
   const handleVoiceResult = (text: string) => {
