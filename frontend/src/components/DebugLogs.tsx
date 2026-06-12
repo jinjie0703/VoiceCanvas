@@ -63,7 +63,7 @@ export const DebugLogs: React.FC<DebugLogsProps> = ({ logs, onClear, onHidePanel
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto mt-4">
+      <div className="flex-1 overflow-y-auto mt-4 pr-1.5">
         {logs.length === 0 ? (
           <div className="flex justify-center items-center h-full">
             <Empty

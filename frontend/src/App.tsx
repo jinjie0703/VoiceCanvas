@@ -11,6 +11,7 @@ import { useWebSocket } from "./hooks/useWebSocket";
 import { useSpeechRecognition } from "./hooks/useSpeechRecognition";
 import { ControlPanel } from "./components/ControlPanel";
 import { DebugLogs } from "./components/DebugLogs";
+import { HelpPanel } from "./components/HelpPanel";
 import { Whiteboard } from "./components/Whiteboard";
 import type { WhiteboardRef } from "./components/Whiteboard";
 import type { DebugLog, ServerResponse } from "./types";
@@ -254,6 +255,8 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      <HelpPanel rightPanelVisible={rightPanelVisible} isEditMode={isEditMode} />
     </ConfigProvider>
   );
 }

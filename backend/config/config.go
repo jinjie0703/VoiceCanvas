@@ -8,11 +8,12 @@ import (
 )
 
 type Config struct {
-	Port               string
-	ModelScopeAPIKey   string
-	DashScopeAPIKey    string
-	ModelName          string
-	ModelScopeBaseURL  string
+	Port        string
+	LLMProvider string
+	LLMBaseURL  string
+	LLMAPIKey   string
+	FastModel   string
+	LargeModel  string
 }
 
 // Load reads config variables from the environment and .env file.
@@ -26,21 +27,38 @@ func Load() *Config {
 		port = "8080"
 	}
 
-	modelName := os.Getenv("MODEL_NAME")
-	if modelName == "" {
-		modelName = "qwen-plus"
+	// Unified API Key
+	apiKey := os.Getenv("DASHSCOPE_API_KEY")
+	if apiKey == "" {
+		apiKey = os.Getenv("LLM_API_KEY")
 	}
 
-	baseURL := os.Getenv("MODELSCOPE_BASE_URL")
+	provider := os.Getenv("LLM_PROVIDER")
+	if provider == "" {
+		provider = "dashscope"
+	}
+
+	baseURL := os.Getenv("LLM_BASE_URL")
 	if baseURL == "" {
 		baseURL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 	}
 
+	fastModel := os.Getenv("FAST_MODEL")
+	if fastModel == "" {
+		fastModel = "qwen3.6-flash"
+	}
+
+	largeModel := os.Getenv("LARGE_MODEL")
+	if largeModel == "" {
+		largeModel = "qwen-plus"
+	}
+
 	return &Config{
-		Port:              port,
-		ModelScopeAPIKey:  os.Getenv("MODELSCOPE_API_KEY"),
-		DashScopeAPIKey:   os.Getenv("DASHSCOPE_API_KEY"),
-		ModelName:         modelName,
-		ModelScopeBaseURL: baseURL,
+		Port:        port,
+		LLMProvider: provider,
+		LLMBaseURL:  baseURL,
+		LLMAPIKey:   apiKey,
+		FastModel:   fastModel,
+		LargeModel:  largeModel,
 	}
 }

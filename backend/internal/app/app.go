@@ -23,18 +23,20 @@ func Run() {
 
 	// Initialize services
 	var parserService service.ParserService
+	var enhancer *service.Enhancer
 	llmParser := service.NewLLMParser(cfg)
 
 	if llmParser == nil {
-		slog.Warn("WARNING: No API Key (MODELSCOPE_API_KEY or DASHSCOPE_API_KEY) was set. Running in Mock Mode.")
+		slog.Warn("WARNING: No DASHSCOPE_API_KEY was set. Running in Mock Mode.")
 		parserService = service.NewMockParser()
 	} else {
-		slog.Info("API Key found. Configuring ModelScope OpenAI Compatible Client...", "model", cfg.ModelName)
+		slog.Info("API Key found. Configuring Dual-Pipeline...", "fast_model", cfg.FastModel, "large_model", cfg.LargeModel)
 		parserService = llmParser
+		enhancer = service.NewEnhancer(cfg)
 	}
 
 	// Initialize handlers
-	wsHandler := handler.NewWebSocketHandler(parserService)
+	wsHandler := handler.NewWebSocketHandler(parserService, enhancer)
 
 	// Register routes
 	http.Handle("/ws", wsHandler)
