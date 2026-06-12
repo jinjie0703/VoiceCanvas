@@ -10,5 +10,6 @@
   - `text`：如果用户要求在图的下方或内部写字，可以填入（可选）。
 
 **输出示例：**
+
 - 用户输入："在中间帮我画一个彩色的火箭"
 - 输出：`{"actions": [{"command": "create_svg", "position": "center", "props": {"w": 300, "h": 300, "svgCode": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><path d=\"M50 10 Q60 30 60 60 L40 60 Q40 30 50 10\" fill=\"#ff4d4f\"/><polygon points=\"40,60 60,60 70,80 30,80\" fill=\"#1890ff\"/></svg>"}}]}`

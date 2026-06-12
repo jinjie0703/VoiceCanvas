@@ -34,4 +34,5 @@ type ServerResponse struct {
 	StepByStepPlan []string     `json:"step_by_step_plan,omitempty"`
 	Actions        []DrawAction `json:"actions"`
 	RawText        string       `json:"raw_text,omitempty"` // Echoed user voice input for verification
+	Feedback       string       `json:"feedback,omitempty"` // Feedback message for user
 }

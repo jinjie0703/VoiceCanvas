@@ -26,6 +26,21 @@
 - **clear_canvas**：清空画布上的所有内容。
   - 无附加属性。
 
+- **native_tldraw_shape**：【高阶专属】原生 TLDraw 形状创建。当你通过 RAG 检索到了 TLDraw 的官方文档，并且发现用户需要创建某些复杂的原生图形（如手绘线条 `draw`、框架 `frame`、文本 `text`、高亮 `highlight`、甚至是各种高级的 `props` 属性组合如虚线 `dash`、字体大小、不透明度等）时，直接使用此命令！
+  - 此命令没有任何过滤与封装，你的 `props` 字段必须包含**完整的、符合 TLDraw Schema** 的对象（包括 `type`, `x`, `y`, `props` 以及可能的 `rotation`、`opacity` 等原生字段）。
+  - **重要限制**：TLDraw 中所有的样式属性都是严格的枚举类型！例如 `dash` 只能是 `"draw"` | `"solid"` | `"dashed"` | `"dotted"` | `"none"` 中的一个，绝对不能使用 SVG 的 dasharray 字符串（如 `"8,4"`）！`color` 只能是预设的字符串（如 `"black"`, `"blue"`等），不能用 Hex 值！
+  - **严重错误警告**：TLDraw 绝对没有 `type: "rectangle"` 或 `type: "ellipse"` 等独立的图形类型！如果你要画矩形或几何图形，必须使用原生类型 `type: "geo"`，然后在 `props` 里面声明 `"geo": "rectangle"`！不要凭空捏造形状类型！
+  - 例如：`{"command": "native_tldraw_shape", "target_id": "shape:custom1", "props": {"type": "text", "x": 100, "y": 100, "props": {"text": "原生文本", "color": "red", "size": "xl"}}}`
+  - 这允许你释放 TLDraw 100% 的能力，但要求你确保输出的 JSON 结构严格遵守 TLDraw 官方定义！
+
+- **create_image**：向白板添加图片。当用户需要图片、画作、照片时，直接调用此命令！
+  - `props`：包含以下属性：
+    - `url`：你必须根据用户的意图，调用我们后端内置的 Agent Tools，在以下两个命令 URL 中二选一：
+      1. **网络公开图片检索**：如果用户需要真实的现存物体、地点照（例如：“找一张北京的照片”、“搜一只狗”），请生成：`http://localhost:8080/api/image?action=search&prompt={极简的英文名词}`（注意：这里的 prompt 必须是**1到2个英文单词的极简名词**，例如 `Samoyed` 或 `Beijing`，**千万不要**加修饰词如 `realistic` 或 `beautiful`，否则百科图库会搜不到！）。
+      2. **AI 文生图生成**：如果用户需要凭空创造艺术画作、虚构场景、特定风格的图（例如：“画一幅赛博朋克的插画”、“生成一张梵高风格的星空”），请生成：`http://localhost:8080/api/image?action=generate&prompt={URL编码的详细英文提示词}`（如 `.../api/image?action=generate&prompt=a%20van%20gogh%20style%20painting`）。
+    - `w` 和 `h`：图片的宽度和高度（强烈建议 w=800, h=600）。
+  - `x` 和 `y` 或者 `position`：放置的位置。
+
 - **create_connection**：创建连接两个图形的连线/箭头。
   - `props`：包含以下属性：
     - `start_id`：起点图形的唯一 ID（必须存在于当前的画布状态中）。
