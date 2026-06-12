@@ -10,6 +10,7 @@ import (
 
 	"voice-canvas-backend/config"
 	"voice-canvas-backend/internal/model"
+	"voice-canvas-backend/internal/prompts"
 
 	"github.com/sashabaranov/go-openai"
 )
@@ -52,7 +53,7 @@ func (p *LLMParser) Parse(ctx context.Context, text string, state []model.Canvas
 	messages := []openai.ChatCompletionMessage{
 		{
 			Role:    openai.ChatMessageRoleSystem,
-			Content: systemPrompt,
+			Content: prompts.SystemPrompt,
 		},
 		{
 			Role:    openai.ChatMessageRoleUser,
