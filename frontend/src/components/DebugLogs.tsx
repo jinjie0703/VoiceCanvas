@@ -87,6 +87,14 @@ export const DebugLogs: React.FC<DebugLogsProps> = ({ logs, onClear, onHidePanel
                 <div className="text-sky-600 font-semibold text-xs mb-2">
                   用户输入: {logItem.rawText}
                 </div>
+                {logItem.feedback && (
+                  <div className="bg-orange-50 border border-orange-100 rounded-md p-2 mb-2">
+                    <Text className="text-orange-600 font-semibold text-[11px] block mb-1">系统反馈:</Text>
+                    <Text className="text-orange-500 text-[11px]">
+                      {logItem.feedback}
+                    </Text>
+                  </div>
+                )}
                 {logItem.taskAnalysis && (
                   <div className="bg-slate-100 rounded-md p-2 mb-2">
                     <Text className="text-slate-600 text-[11px] italic">

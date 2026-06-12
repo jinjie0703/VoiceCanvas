@@ -41,7 +41,7 @@ export const HelpPanel: React.FC<HelpPanelProps> = ({ rightPanelVisible, isEditM
       {/* Expanded Panel */}
       <div 
         className={`bg-white/85 backdrop-blur-xl border border-white/60 shadow-2xl rounded-2xl overflow-hidden transition-all duration-300 ease-out origin-bottom-right ${
-          isOpen ? 'w-[340px] h-[480px] opacity-100 scale-100 mb-4' : 'w-0 h-0 opacity-0 scale-95 mb-0 pointer-events-none'
+          isOpen ? 'w-85 h-120 opacity-100 scale-100 mb-4' : 'w-0 h-0 opacity-0 scale-95 mb-0 pointer-events-none'
         }`}
       >
         {isOpen && (

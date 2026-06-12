@@ -23,6 +23,7 @@ export interface ServerResponse {
   step_by_step_plan?: string[];
   actions: DrawAction[];
   raw_text?: string;
+  feedback?: string;
 }
 
 export interface DebugLog {
@@ -31,4 +32,5 @@ export interface DebugLog {
   taskAnalysis?: string;
   plan?: string[];
   actions: DrawAction[];
+  feedback?: string;
 }

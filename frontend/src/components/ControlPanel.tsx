@@ -84,7 +84,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           />
         </div>
         <Paragraph className="text-slate-500 text-xs leading-relaxed mb-6">
-          智能手绘辅助引擎。通过自然语言对话，AI 代理将为您实时生成与修改拓扑结构。
+          智能手绘辅助引擎。通过自然语言对话，AI
+          代理将为您实时生成与修改拓扑结构。
         </Paragraph>
 
         <div className="flex flex-col items-center gap-6 my-10">
@@ -145,7 +146,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           </div>
 
           <div className="voice-wave-container">
-            <div className={`sound-wave ${isRecording ? "active" : statusText.includes("思考") ? "thinking" : ""}`}>
+            <div
+              className={`sound-wave ${isRecording ? "active" : statusText.includes("思考") ? "thinking" : ""}`}
+            >
               <span className="bg-slate-300" />
               <span className="bg-slate-300" />
               <span className="bg-slate-300" />
@@ -172,7 +175,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 key={cmd}
                 type="text"
                 onClick={() => onSubmitManual(cmd)}
-                className="text-left text-[#3182ed] bg-blue-50/50 hover:bg-blue-100/50 border border-blue-100/50 rounded-lg py-2 px-3 w-full text-xs font-medium h-auto whitespace-normal break-words leading-relaxed"
+                className="text-left text-[#3182ed] bg-blue-50/50 hover:bg-blue-100/50 border border-blue-100/50 rounded-lg py-2 px-3 w-full text-xs font-medium h-auto whitespace-normal wrap-break-word leading-relaxed"
               >
                 {cmd}
               </Button>
