@@ -7,6 +7,7 @@ import { getSemanticPosition, getCoordsFromSemantic } from '../utils/coords';
 
 interface WhiteboardProps {
   onMount?: (editor: Editor) => void;
+  hideUi?: boolean;
 }
 
 export interface WhiteboardRef {
@@ -14,7 +15,7 @@ export interface WhiteboardRef {
   executeActions: (actions: DrawAction[]) => void;
 }
 
-export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount }, ref) => {
+export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount, hideUi }, ref) => {
   const editorRef = useRef<Editor | null>(null);
 
   const getCanvasStateSnapshot = (): CanvasElement[] => {
@@ -232,7 +233,7 @@ export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount 
 
   return (
     <Tldraw
-      hideUi
+      hideUi={hideUi ?? true}
       onMount={(editor) => {
         editorRef.current = editor;
         onMount?.(editor);

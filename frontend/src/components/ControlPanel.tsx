@@ -65,7 +65,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           />
         </div>
         <Paragraph className="text-slate-500 text-xs leading-relaxed mb-6">
-          语音智能手绘白板控制中心。按住下方麦克风并说话，或输入指令，AI 会自动为您绘制。
+          语音智能手绘白板控制中心。点击下方麦克风并说话，或直接输入指令，AI 会自动为您绘制。
         </Paragraph>
 
         <div className="flex flex-col items-center gap-6 my-10">
@@ -75,21 +75,19 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               shape="circle"
               icon={<AudioOutlined style={{ fontSize: 32 }} />}
               disabled={!isSpeechSupported}
-              onMouseDown={onStartRecording}
-              onMouseUp={onStopRecording}
-              onTouchStart={onStartRecording}
-              onTouchEnd={onStopRecording}
-              className={`mic-button ${isRecording ? 'recording' : ''}`}
+              onClick={() => isRecording ? onStopRecording() : onStartRecording()}
+              className={`mic-button z-10 transition-transform duration-200 hover:scale-105 active:scale-95 ${isRecording ? 'recording' : ''}`}
               style={{
                 width: 90,
                 height: 90,
                 border: 'none',
+                transition: 'box-shadow 0.3s ease',
                 background: isRecording
                   ? 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)'
-                  : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                  : 'linear-gradient(135deg, #53a0fa 0%, #3182ed 100%)',
                 boxShadow: isRecording
-                  ? '0 8px 30px rgba(244, 63, 94, 0.3)'
-                  : '0 8px 30px rgba(14, 165, 233, 0.2)',
+                  ? '0 8px 30px rgba(244, 63, 94, 0.4)'
+                  : '0 8px 30px rgba(49, 130, 237, 0.2)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -148,7 +146,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 size="small"
                 type="text"
                 onClick={() => onSubmitManual(cmd)}
-                className="text-left text-sky-700 bg-sky-50/50 hover:bg-sky-100/50 border border-sky-100/50 rounded-md py-1 px-3 w-full text-xs truncate font-medium"
+                className="text-left text-[#3182ed] bg-blue-50/50 hover:bg-blue-100/50 border border-blue-100/50 rounded-md py-1 px-3 w-full text-xs truncate font-medium"
               >
                 {cmd}
               </Button>
@@ -170,17 +168,17 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     size="small"
                     icon={<SendOutlined style={{ fontSize: 12 }} />}
                     onClick={handleSubmit}
-                    className="bg-sky-600 border-sky-600 hover:bg-sky-500"
+                    className="bg-[#3182ed] border-[#3182ed] hover:bg-[#53a0fa]"
                   />
                 </Tooltip>
               }
-              className="bg-white border-slate-200 text-slate-700 rounded-lg py-2 px-3 focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+              className="bg-white border-slate-200 text-slate-700 rounded-lg py-2 px-3 focus:border-[#3182ed] focus:ring-1 focus:ring-[#3182ed]"
             />
           </Form.Item>
         </Form>
         <div className="text-center">
           <Text className="text-[11px] text-slate-400">
-            提示：按住录音按钮，或直接输入文字指令
+            提示：点击录音按钮，或直接输入文字指令
           </Text>
         </div>
       </div>
