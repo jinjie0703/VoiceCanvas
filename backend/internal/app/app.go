@@ -81,7 +81,7 @@ func Run() {
 				BaseURL: cfg.LLMBaseURL,
 				Model:   "text-embedding-v3",
 			},
-			MaxRounds: 5,
+			MaxRounds: 10,
 		})
 		if err != nil {
 			slog.Warn("Failed to create Agent, falling back to legacy parser", "error", err)

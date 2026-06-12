@@ -84,13 +84,13 @@ func (a *Agent) Run(ctx context.Context, enhancedPrompt string, canvasState []mo
 	}
 
 	// 2. Build system prompt with RAG context
-	systemPrompt := a.buildSystemPrompt(ragContext)
+	systemPrompt := a.buildSystemPrompt(ragContext, a.maxRounds)
 
 	// 3. Initialize conversation history
 	stateJSON, _ := json.Marshal(canvasState)
 	messages := []*schema.Message{
 		schema.SystemMessage(systemPrompt),
-		schema.UserMessage(fmt.Sprintf("User Request: %s\n\nCurrent Canvas State: %s", enhancedPrompt, string(stateJSON))),
+		schema.UserMessage(fmt.Sprintf("User Request: %s\n\nCurrent Canvas State: %s\n\n[System Info] Total allowed interactions for this task: %d. Please aim to complete the task within this limit.", enhancedPrompt, string(stateJSON), a.maxRounds)),
 	}
 
 	// 4. ReAct Loop
@@ -190,7 +190,15 @@ func (a *Agent) Run(ctx context.Context, enhancedPrompt string, canvasState []mo
 		if observe != nil {
 			newState := observe()
 			newStateJSON, _ := json.Marshal(newState)
-			observation := fmt.Sprintf("Actions executed successfully. Updated canvas state (%d shapes): %s\nContinue if more work is needed, or respond with {\"status\": \"done\"} if the task is complete.", len(newState), string(newStateJSON))
+			remaining := a.maxRounds - (round + 1)
+			var systemWarning string
+			if remaining <= 2 {
+				systemWarning = fmt.Sprintf("\n[CRITICAL SYSTEM WARNING] You ONLY have %d interaction(s) remaining! You MUST finish the current task and ensure you return `{\"status\": \"done\"}` before you are cut off.", remaining)
+			} else {
+				systemWarning = fmt.Sprintf("\n[System Info] You have %d interaction(s) remaining. If the current canvas already meets the user's requirement, YOU MUST STOP NOW by responding ONLY with `{\"status\": \"done\"}`.", remaining)
+			}
+
+			observation := fmt.Sprintf("Actions executed successfully. Updated canvas state (%d shapes): %s%s", len(newState), string(newStateJSON), systemWarning)
 			messages = append(messages, schema.UserMessage(observation))
 		} else {
 			// No observation function, single-pass mode
@@ -214,7 +222,7 @@ func (a *Agent) retrieveContext(ctx context.Context, query string) string {
 		return ""
 	}
 
-	results := a.retriever.Search(embedding, 3)
+	results := a.retriever.Search(embedding, 6)
 	if len(results) == 0 {
 		return ""
 	}
@@ -223,18 +231,19 @@ func (a *Agent) retrieveContext(ctx context.Context, query string) string {
 }
 
 // buildSystemPrompt constructs the full system prompt with RAG context injected.
-func (a *Agent) buildSystemPrompt(ragContext string) string {
+func (a *Agent) buildSystemPrompt(ragContext string, maxRounds int) string {
 	base := prompts.SystemPrompt
 
 	if ragContext != "" {
 		base += "\n\n### TLDraw API 参考文档 (由 RAG 检索)\n以下是与当前任务最相关的 TLDraw SDK 文档片段。你可以参考这些 API 来执行更丰富的操作：\n\n" + ragContext
 	}
 
-	base += "\n\n### Agent 模式补充规则\n" +
-		"- 你现在运行在 Agent 模式下。每轮你可以输出一批 actions，系统会执行它们并返回最新的画布状态。\n" +
-		"- 你可以根据返回的画布状态继续调整（例如发现布局不合理、节点重叠、缺少连线等）。\n" +
-		"- 当你认为任务已经完成时，输出 `{\"status\": \"done\"}` 结束循环。\n" +
-		"- 每轮最多输出 5 个 actions，不要一次性输出太多。"
+	base += fmt.Sprintf("\n\n### Agent 模式补充规则\n"+
+		"- 你现在运行在 Agent 模式下。每轮你可以输出一批 actions，系统会执行它们并返回最新的画布状态。\n"+
+		"- 你可以根据返回的画布状态继续调整（例如发现布局不合理、节点重叠、缺少连线等）。\n"+
+		"- **尽早结束**：当你认为任务已经达到用户要求时，**请必须并且立即**输出 `{\"status\": \"done\"}` 结束循环。不要为了凑轮次而画蛇添足！\n"+
+		"- 每轮最多输出 5 个 actions，不要一次性输出太多。\n"+
+		"- 注意：你的最大交互轮数为 %d 轮。如果在最后几次交互中你发现无法画完所有细节，也请立即收尾并返回 done 状态。", maxRounds)
 
 	return base
 }
