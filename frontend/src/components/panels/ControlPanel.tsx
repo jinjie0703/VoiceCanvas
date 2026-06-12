@@ -7,42 +7,70 @@ import {
   Form,
   Input,
   Space,
-  Tooltip,
   Typography,
+  message,
 } from "antd";
 import {
   AudioOutlined,
   SendOutlined,
   InfoCircleOutlined,
   MenuFoldOutlined,
+  ThunderboltOutlined,
 } from "@ant-design/icons";
+
+import { useAppStore } from "../../store/useAppStore";
+import { generateTextStream } from "../../api/ai";
 
 const { Title, Paragraph, Text } = Typography;
 
 interface ControlPanelProps {
-  wsStatus: "connected" | "disconnected";
   isRecording: boolean;
-  statusText: string;
-  transcript: string;
   isSpeechSupported: boolean;
   onStartRecording: () => void;
   onStopRecording: () => void;
   onSubmitManual: (text: string) => void;
-  onHidePanel: () => void;
 }
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
-  wsStatus,
   isRecording,
-  statusText,
-  transcript,
   isSpeechSupported,
   onStartRecording,
   onStopRecording,
   onSubmitManual,
-  onHidePanel,
 }) => {
+  const wsStatus = useAppStore((state) => state.wsStatus);
+  const statusText = useAppStore((state) => state.statusText);
+  const transcript = useAppStore((state) => state.transcript);
+  const onHidePanel = () => useAppStore.getState().setLeftPanelVisible(false);
   const [manualText, setManualText] = useState("");
+  const [isOptimizing, setIsOptimizing] = useState(false);
+
+  const handleOptimize = () => {
+    if (!manualText.trim()) {
+      message.info("请先输入一些简短的描述，AI 将为您扩充");
+      return;
+    }
+    setIsOptimizing(true);
+    const originalText = manualText.trim();
+    setManualText("");
+
+    generateTextStream(
+      { theme: originalText },
+      {
+        onMessage: (data) => {
+          setManualText((prev) => prev + data.text);
+        },
+        onClose: () => {
+          setIsOptimizing(false);
+          message.success("提示词已优化！");
+        },
+        onError: () => {
+          setIsOptimizing(false);
+          message.error("优化失败，请稍后重试");
+        },
+      }
+    );
+  };
 
   const handleSubmit = () => {
     if (!manualText.trim()) return;
@@ -184,14 +212,16 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         </div>
 
         <Form onFinish={handleSubmit} className="w-full">
-          <Form.Item className="mb-2">
-            <div className="relative w-full">
+          <Form.Item className="mb-0">
+            {/* 模拟一个完整的输入框外观，让操作按钮在视觉上“内含” */}
+            <div className="flex flex-col rounded-xl border border-gray-200 hover:border-blue-400 focus-within:border-blue-400 focus-within:shadow-[0_0_0_2px_rgba(5,145,255,0.1)] transition-all bg-white overflow-hidden">
               <Input.TextArea
                 value={manualText}
                 onChange={(e) => setManualText(e.target.value)}
                 placeholder="输入画图指令，例如：绘制一个前后端分离的系统架构图..."
-                autoSize={{ minRows: 2, maxRows: 5 }}
-                className="bg-white border-slate-200 text-slate-700 rounded-xl py-2 px-3 pr-10 focus:border-[#3182ed] focus:ring-1 focus:ring-[#3182ed] resize-none"
+                autoSize={{ minRows: 3, maxRows: 5 }}
+                variant="borderless"
+                className="p-3 pb-1 text-sm resize-none focus:ring-0 shadow-none"
                 onPressEnter={(e) => {
                   if (!e.shiftKey) {
                     e.preventDefault();
@@ -199,17 +229,31 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                   }
                 }}
               />
-              <div className="absolute right-2 bottom-2 z-10">
-                <Tooltip title="发送指令 (Enter发送，Shift+Enter换行)">
+              <div className="flex items-center justify-between px-2 pb-2 mt-1">
+                <div className="text-[10px] text-gray-400 pl-1">
+                  Enter 发送 / Shift + Enter 换行
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<ThunderboltOutlined className="text-[#3182ed]" />}
+                    loading={isOptimizing}
+                    onClick={handleOptimize}
+                    className="flex items-center text-xs text-[#3182ed] hover:bg-blue-50 rounded-lg px-2 h-7"
+                  >
+                    AI 优化
+                  </Button>
                   <Button
                     type="primary"
-                    shape="circle"
                     size="small"
                     icon={<SendOutlined style={{ fontSize: 12 }} />}
                     onClick={handleSubmit}
-                    className="bg-[#3182ed] border-[#3182ed] hover:bg-[#53a0fa] shadow-sm flex items-center justify-center"
-                  />
-                </Tooltip>
+                    className="bg-[#3182ed] border-[#3182ed] hover:bg-[#53a0fa] shadow-sm flex items-center justify-center rounded-lg h-7 px-3"
+                  >
+                    <span className="text-xs">发送</span>
+                  </Button>
+                </div>
               </div>
             </div>
           </Form.Item>
