@@ -13,3 +13,15 @@ export const handleNativeTldrawShape: ActionHandler = (action, { editor }) => {
   }
   executeWithInterceptor(editor, nativeShape);
 };
+
+export const handleGroupShapes: ActionHandler = (action, { editor }) => {
+  const targetIds = ((action.props?.target_ids as string[]) || []).map((id) => id as import("tldraw").TLShapeId);
+  if (targetIds.length > 0) {
+    editor.groupShapes(targetIds);
+  }
+};
+
+export const handleSelectShapes: ActionHandler = (action, { editor }) => {
+  const targetIds = ((action.props?.target_ids as string[]) || []).map((id) => id as import("tldraw").TLShapeId);
+  editor.select(...targetIds);
+};

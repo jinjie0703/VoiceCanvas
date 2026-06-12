@@ -17,6 +17,8 @@ export const handleCreateConnection: ActionHandler = (action, { editor }) => {
     richText: toRichText(action.text || ""),
     color: action.props?.color || "black",
     bend: 40,
+    start: { type: "point", x: 0, y: 0 },
+    end: { type: "point", x: 0, y: 0 },
   });
 
   editor.createShape({

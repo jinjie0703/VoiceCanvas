@@ -9,6 +9,7 @@ import {
   Space,
   Typography,
   message,
+  Tooltip,
 } from "antd";
 import {
   AudioOutlined,
@@ -20,6 +21,7 @@ import {
 
 import { useAppStore } from "../../store/useAppStore";
 import { generateTextStream } from "../../api/ai";
+import { useSpeechRecognition } from "../../services/speech/useSpeechRecognition";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -44,6 +46,18 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const onHidePanel = () => useAppStore.getState().setLeftPanelVisible(false);
   const [manualText, setManualText] = useState("");
   const [isOptimizing, setIsOptimizing] = useState(false);
+  const [optimizingBgText, setOptimizingBgText] = useState("");
+
+  const {
+    isRecording: isDictating,
+    isSupported: isDictationSupported,
+    startRecording: startDictation,
+    stopRecording: stopDictation,
+  } = useSpeechRecognition({
+    onResult: (text) => {
+      setManualText((prev) => prev + text);
+    },
+  });
 
   const handleOptimize = () => {
     if (!manualText.trim()) {
@@ -52,6 +66,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     }
     setIsOptimizing(true);
     const originalText = manualText.trim();
+    setOptimizingBgText(originalText);
     setManualText("");
 
     generateTextStream(
@@ -62,10 +77,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         },
         onClose: () => {
           setIsOptimizing(false);
+          setOptimizingBgText("");
           message.success("提示词已优化！");
         },
         onError: () => {
           setIsOptimizing(false);
+          setOptimizingBgText("");
           message.error("优化失败，请稍后重试");
         },
       }
@@ -214,14 +231,19 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         <Form onFinish={handleSubmit} className="w-full">
           <Form.Item className="mb-0">
             {/* 模拟一个完整的输入框外观，让操作按钮在视觉上“内含” */}
-            <div className="flex flex-col rounded-xl border border-gray-200 hover:border-blue-400 focus-within:border-blue-400 focus-within:shadow-[0_0_0_2px_rgba(5,145,255,0.1)] transition-all bg-white overflow-hidden">
+            <div className="relative flex flex-col rounded-xl border border-gray-200 hover:border-blue-400 focus-within:border-blue-400 focus-within:shadow-[0_0_0_2px_rgba(5,145,255,0.1)] transition-all bg-white overflow-hidden">
+              {optimizingBgText && (
+                <div className="absolute top-0 left-0 w-full p-3 pb-1 text-sm text-gray-300 whitespace-pre-wrap pointer-events-none select-none z-0">
+                  {optimizingBgText}
+                </div>
+              )}
               <Input.TextArea
                 value={manualText}
                 onChange={(e) => setManualText(e.target.value)}
-                placeholder="输入画图指令，例如：绘制一个前后端分离的系统架构图..."
+                placeholder={optimizingBgText ? "" : "输入画图指令，例如：绘制一个前后端分离的系统架构图..."}
                 autoSize={{ minRows: 3, maxRows: 5 }}
                 variant="borderless"
-                className="p-3 pb-1 text-sm resize-none focus:ring-0 shadow-none"
+                className="p-3 pb-1 text-sm resize-none focus:ring-0 shadow-none bg-transparent relative z-10"
                 onPressEnter={(e) => {
                   if (!e.shiftKey) {
                     e.preventDefault();
@@ -230,8 +252,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 }}
               />
               <div className="flex items-center justify-between px-2 pb-2 mt-1">
-                <div className="text-[10px] text-gray-400 pl-1">
-                  Enter 发送 / Shift + Enter 换行
+                <div className="flex flex-col text-[10px] text-gray-400 pl-1 leading-tight justify-center gap-0.5">
+                  <span>Enter 发送</span>
+                  <span>Shift + Enter 换行</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -244,6 +267,17 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                   >
                     AI 优化
                   </Button>
+                  {isDictationSupported && (
+                    <Tooltip title={isDictating ? "停止语音输入" : "语音输入到文本框"}>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<AudioOutlined className={isDictating ? "text-rose-500 animate-pulse" : "text-slate-500"} />}
+                        onClick={() => isDictating ? stopDictation() : startDictation()}
+                        className={`flex items-center justify-center rounded-lg h-7 px-2 ${isDictating ? "bg-rose-50 hover:bg-rose-100" : "hover:bg-slate-100"}`}
+                      />
+                    </Tooltip>
+                  )}
                   <Button
                     type="primary"
                     size="small"

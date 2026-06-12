@@ -4,6 +4,10 @@ export interface CanvasElement {
   geo?: string;
   color: string;
   position: string;
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
   text?: string;
 }
 
@@ -24,6 +28,7 @@ export interface ServerResponse {
   actions: DrawAction[];
   raw_text?: string;
   feedback?: string;
+  voice_reply?: string;
 }
 
 export interface DebugLog {
@@ -33,4 +38,5 @@ export interface DebugLog {
   plan?: string[];
   actions: DrawAction[];
   feedback?: string;
+  voiceReply?: string;
 }

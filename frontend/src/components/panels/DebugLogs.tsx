@@ -94,6 +94,14 @@ export const DebugLogs: React.FC = () => {
                     </Text>
                   </div>
                 )}
+                {logItem.voiceReply && (
+                  <div className="bg-sky-50 border border-sky-100 rounded-md p-2 mb-2">
+                    <Text className="text-sky-600 font-semibold text-[11px] block mb-1">语音回复 (TTS):</Text>
+                    <Text className="text-sky-500 text-[11px]">
+                      {logItem.voiceReply}
+                    </Text>
+                  </div>
+                )}
                 {logItem.taskAnalysis && (
                   <div className="bg-slate-100 rounded-md p-2 mb-2">
                     <Text className="text-slate-600 text-[11px] italic">
