@@ -1,17 +1,16 @@
 import React from 'react';
 import { Button, Card, Empty, List, Typography } from 'antd';
 import { DeleteOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
-import type { DebugLog } from '../types';
+
+
+import { useAppStore } from '../../store/useAppStore';
 
 const { Title, Text } = Typography;
 
-interface DebugLogsProps {
-  logs: DebugLog[];
-  onClear: () => void;
-  onHidePanel: () => void;
-}
-
-export const DebugLogs: React.FC<DebugLogsProps> = ({ logs, onClear, onHidePanel }) => {
+export const DebugLogs: React.FC = () => {
+  const logs = useAppStore((state) => state.debugLogs);
+  const onClear = useAppStore((state) => state.clearDebugLogs);
+  const onHidePanel = () => useAppStore.getState().setRightPanelVisible(false);
   const renderJsonHighlight = (jsonObj: unknown) => {
     const jsonString = JSON.stringify(jsonObj, null, 2);
     const highlighted = jsonString.replace(

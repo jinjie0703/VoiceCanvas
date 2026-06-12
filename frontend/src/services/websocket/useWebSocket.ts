@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
-import type { ServerResponse, CanvasElement } from '../types';
+import { useEffect, useRef } from 'react';
+import type { ServerResponse, CanvasElement } from '../../types';
+import { useAppStore } from '../../store/useAppStore';
 
 interface UseWebSocketProps {
   onMessage: (response: ServerResponse) => void;
 }
 
 export function useWebSocket({ onMessage }: UseWebSocketProps) {
-  const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected'>('disconnected');
+  const setWsStatus = useAppStore((state) => state.setWsStatus);
   const wsRef = useRef<WebSocket | null>(null);
   const onMessageRef = useRef(onMessage);
 
@@ -17,19 +18,36 @@ export function useWebSocket({ onMessage }: UseWebSocketProps) {
   useEffect(() => {
     const socketUrl = `ws://${window.location.hostname}:8080/ws`;
     let socket: WebSocket;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_DELAY = 10000; // max 10 seconds
+    const BASE_DELAY = 1000; // start with 1s
+    let reconnectTimeout: ReturnType<typeof setTimeout>;
+    let isComponentMounted = true;
 
     function connect() {
+      if (!isComponentMounted) return;
+      
       socket = new WebSocket(socketUrl);
 
       socket.onopen = () => {
         setWsStatus('connected');
+        reconnectAttempts = 0; // reset on successful connection
         console.log('Connected to WebSocket server');
       };
 
       socket.onclose = () => {
         setWsStatus('disconnected');
-        console.log('Disconnected from WebSocket. Reconnecting in 3s...');
-        setTimeout(connect, 3000);
+        if (!isComponentMounted) return;
+
+        // Exponential backoff with jitter
+        const delay = Math.min(MAX_RECONNECT_DELAY, BASE_DELAY * Math.pow(1.5, reconnectAttempts));
+        const jitter = Math.random() * 500; // 0-500ms jitter
+        const finalDelay = delay + jitter;
+
+        reconnectAttempts++;
+        console.log(`Disconnected from WebSocket. Reconnecting in ${Math.round(finalDelay / 1000)}s...`);
+        
+        reconnectTimeout = setTimeout(connect, finalDelay);
       };
 
       socket.onerror = (err) => {
@@ -51,9 +69,11 @@ export function useWebSocket({ onMessage }: UseWebSocketProps) {
     connect();
 
     return () => {
+      isComponentMounted = false;
+      clearTimeout(reconnectTimeout);
       if (socket) socket.close();
     };
-  }, []);
+  }, [setWsStatus]);
 
   const sendRequest = (text: string, canvasState: CanvasElement[]): boolean => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
@@ -70,5 +90,5 @@ export function useWebSocket({ onMessage }: UseWebSocketProps) {
     return true;
   };
 
-  return { wsStatus, sendRequest };
+  return { sendRequest };
 }
