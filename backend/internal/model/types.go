@@ -18,6 +18,8 @@ type CanvasElement struct {
 type ClientMessage struct {
 	Text        string          `json:"text"`
 	CanvasState []CanvasElement `json:"canvas_state"`
+	Error       string          `json:"error,omitempty"`
+	Base64Image string          `json:"base64_image,omitempty"`
 }
 
 // DrawAction represents a single mutation instruction sent back to the frontend.

@@ -71,18 +71,21 @@ func (e *Engine) ProcessInput(ctx context.Context, session ClientSession, client
 			defer func() {
 				_ = session.SendActions([]model.DrawAction{}, "__done__")
 			}()
-			e.agent.Run(ctx, p, s,
+			e.agent.Run(ctx, p, s, clientMsg.Base64Image,
 				func(resp model.ServerResponse) {
 					// Add raw text back so client knows what it belongs to
 					_ = session.SendActions(resp.Actions, text)
 				},
-				func() []model.CanvasElement {
+				func() ([]model.CanvasElement, error) {
 					state, err := session.RequestObservation(ctx)
 					if err != nil {
+						if err.Error() != "observation timeout" && err != ctx.Err() {
+							return nil, err
+						}
 						slog.Warn("Observation failed or timeout, using empty state", "error", err)
-						return []model.CanvasElement{}
+						return []model.CanvasElement{}, nil
 					}
-					return state
+					return state, nil
 				},
 			)
 		}(finalPrompt, clientMsg.CanvasState, clientMsg.Text)

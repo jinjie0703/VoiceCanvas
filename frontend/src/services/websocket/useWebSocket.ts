@@ -75,7 +75,7 @@ export function useWebSocket({ onMessage }: UseWebSocketProps) {
     };
   }, [setWsStatus]);
 
-  const sendRequest = (text: string, canvasState: CanvasElement[]): boolean => {
+  const sendRequest = (text: string, canvasState: CanvasElement[], error?: string, base64Image?: string): boolean => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       console.error('WebSocket not connected');
       return false;
@@ -84,6 +84,8 @@ export function useWebSocket({ onMessage }: UseWebSocketProps) {
     const payload = {
       text,
       canvas_state: canvasState,
+      error,
+      base64_image: base64Image,
     };
 
     wsRef.current.send(JSON.stringify(payload));

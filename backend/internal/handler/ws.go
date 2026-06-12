@@ -35,11 +35,15 @@ func NewWebSocketHandler(engine *service.Engine) *WebSocketHandler {
 	}
 }
 
-// wsSession implements service.ClientSession for a single WebSocket connection.
+type ObservationResponse struct {
+	State []model.CanvasElement
+	Error error
+}
+
 type wsSession struct {
 	conn          *websocket.Conn
 	writeMu       *sync.Mutex
-	observationCh chan []model.CanvasElement
+	observationCh chan ObservationResponse
 }
 
 func (s *wsSession) SendActions(actions []model.DrawAction, rawText string) error {
@@ -101,9 +105,13 @@ func (s *wsSession) RequestObservation(ctx context.Context) ([]model.CanvasEleme
 	}
 
 	select {
-	case state := <-s.observationCh:
-		slog.Info("Received observation", "shapes", len(state))
-		return state, nil
+	case resp := <-s.observationCh:
+		if resp.Error != nil {
+			slog.Warn("Received observation with error", "error", resp.Error)
+			return resp.State, resp.Error
+		}
+		slog.Info("Received observation", "shapes", len(resp.State))
+		return resp.State, nil
 	case <-time.After(10 * time.Second):
 		return nil, fmt.Errorf("observation timeout")
 	case <-ctx.Done():
@@ -128,7 +136,7 @@ func (h *WebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	session := &wsSession{
 		conn:          conn,
 		writeMu:       &sync.Mutex{},
-		observationCh: make(chan []model.CanvasElement, 1),
+		observationCh: make(chan ObservationResponse, 1),
 	}
 
 	for {
@@ -147,8 +155,12 @@ func (h *WebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		// Check if this is an observation response (canvas_state feedback for Agent)
 		if clientMsg.Text == "__observation__" {
+			obsResp := ObservationResponse{State: clientMsg.CanvasState}
+			if clientMsg.Error != "" {
+				obsResp.Error = fmt.Errorf("%s", clientMsg.Error)
+			}
 			select {
-			case session.observationCh <- clientMsg.CanvasState:
+			case session.observationCh <- obsResp:
 			default:
 				// Channel already has data, skip
 			}

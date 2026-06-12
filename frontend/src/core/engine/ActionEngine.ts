@@ -35,7 +35,8 @@ const handlers: Record<string, ActionHandler> = {
   select_shapes: handleSelectShapes,
 };
 
-export const executeActionEngine = (actions: DrawAction[], context: ActionContext) => {
+export const executeActionEngine = (actions: DrawAction[], context: ActionContext): string[] => {
+  const errors: string[] = [];
   actions.forEach((action) => {
     try {
       if (!action.command) return;
@@ -43,14 +44,20 @@ export const executeActionEngine = (actions: DrawAction[], context: ActionContex
       if (handler) {
         handler(action, context);
       } else {
-        console.warn(`[ActionEngine] Unrecognized command: ${action.command}`);
+        const msg = `Unrecognized command: ${action.command}`;
+        console.warn(`[ActionEngine] ${msg}`);
+        errors.push(msg);
       }
-    } catch (e) {
+    } catch (e: unknown) {
       console.error("[ActionEngine] Failed executing action:", action, e);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      errors.push(`Action ${action.command} failed: ${errorMessage}`);
     }
   });
 
   setTimeout(() => {
     context.editor.zoomToFit({ animation: { duration: 300 } });
   }, 150);
+
+  return errors;
 };

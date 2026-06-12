@@ -16,7 +16,8 @@ interface WhiteboardProps {
 
 export interface WhiteboardRef {
   getCanvasStateSnapshot: () => CanvasElement[];
-  executeActions: (actions: DrawAction[]) => void;
+  executeActions: (actions: DrawAction[]) => string[];
+  exportSnapshotAsBase64: () => Promise<string | undefined>;
   undo: () => void;
   redo: () => void;
 }
@@ -60,23 +61,53 @@ export const Whiteboard = React.memo(
       });
     };
 
-    const executeActions = (actions: DrawAction[]) => {
+    const executeActions = (actions: DrawAction[]): string[] => {
       const editor = editorRef.current;
-      if (!editor) return;
+      if (!editor) return [];
 
       const canvasW = window.innerWidth;
       const canvasH = window.innerHeight;
 
       // Wrap the streamed chunks so TLDraw records them correctly in the history stack
-      executeActionEngine(actions, { editor, canvasW, canvasH });
+      return executeActionEngine(actions, { editor, canvasW, canvasH });
     };
 
     const undo = () => editorRef.current?.undo();
     const redo = () => editorRef.current?.redo();
 
+    const exportSnapshotAsBase64 = async (): Promise<string | undefined> => {
+      const editor = editorRef.current;
+      if (!editor) return undefined;
+
+      try {
+        const shapeIds = editor.getCurrentPageShapeIds();
+        if (shapeIds.size === 0) return undefined;
+
+        const result = await editor.toImage(Array.from(shapeIds), {
+          format: "png",
+          padding: 16,
+          background: true,
+        });
+
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const dataUrl = reader.result as string;
+            const base64 = dataUrl.split(",")[1];
+            resolve(base64);
+          };
+          reader.readAsDataURL(result.blob);
+        });
+      } catch (e) {
+        console.error("Failed to export canvas screenshot:", e);
+        return undefined;
+      }
+    };
+
     useImperativeHandle(ref, () => ({
       getCanvasStateSnapshot,
       executeActions,
+      exportSnapshotAsBase64,
       undo,
       redo,
     }));

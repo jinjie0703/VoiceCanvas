@@ -19,8 +19,8 @@ import (
 // OnActionCallback is called when the agent produces actions to be executed on the canvas.
 type OnActionCallback func(resp model.ServerResponse)
 
-// ObservationFunc is called after actions are sent; it should return the latest canvas state.
-type ObservationFunc func() []model.CanvasElement
+// ObservationFunc is called after actions are sent; it should return the latest canvas state and an optional error string.
+type ObservationFunc func() ([]model.CanvasElement, error)
 
 // Agent orchestrates the ReAct loop: Think → Act → Observe → Repeat.
 type Agent struct {
@@ -76,7 +76,7 @@ func NewAgent(ctx context.Context, cfg Config) (*Agent, error) {
 // canvasState: the current state of the canvas.
 // onAction: callback to send actions to the frontend for execution.
 // observe: callback to retrieve updated canvas state after actions are executed.
-func (a *Agent) Run(ctx context.Context, enhancedPrompt string, canvasState []model.CanvasElement, onAction OnActionCallback, observe ObservationFunc) {
+func (a *Agent) Run(ctx context.Context, enhancedPrompt string, canvasState []model.CanvasElement, base64Image string, onAction OnActionCallback, observe ObservationFunc) {
 	// 1. Retrieve relevant TLDraw API documentation
 	ragContext := ""
 	if a.retriever != nil {
@@ -88,9 +88,30 @@ func (a *Agent) Run(ctx context.Context, enhancedPrompt string, canvasState []mo
 
 	// 3. Initialize conversation history
 	stateJSON, _ := json.Marshal(canvasState)
+	userContent := fmt.Sprintf("User Request: %s\n\nCurrent Canvas State: %s\n\n[System Info] Total allowed interactions for this task: %d. Please aim to complete the task within this limit.", enhancedPrompt, string(stateJSON), a.maxRounds)
+
+	var userMsg *schema.Message
+	if base64Image != "" {
+		dataURI := "data:image/png;base64," + base64Image
+		userMsg = &schema.Message{
+			Role: schema.User,
+			UserInputMultiContent: []schema.MessageInputPart{
+				{Type: schema.ChatMessagePartTypeText, Text: userContent},
+				{Type: schema.ChatMessagePartTypeImageURL, Image: &schema.MessageInputImage{
+					MessagePartCommon: schema.MessagePartCommon{
+						URL: &dataURI,
+					},
+					Detail: schema.ImageURLDetailHigh,
+				}},
+			},
+		}
+	} else {
+		userMsg = schema.UserMessage(userContent)
+	}
+
 	messages := []*schema.Message{
 		schema.SystemMessage(systemPrompt),
-		schema.UserMessage(fmt.Sprintf("User Request: %s\n\nCurrent Canvas State: %s\n\n[System Info] Total allowed interactions for this task: %d. Please aim to complete the task within this limit.", enhancedPrompt, string(stateJSON), a.maxRounds)),
+		userMsg,
 	}
 
 	// 4. ReAct Loop
@@ -188,18 +209,23 @@ func (a *Agent) Run(ctx context.Context, enhancedPrompt string, canvasState []mo
 		messages = append(messages, schema.AssistantMessage(fullContent, nil))
 
 		if observe != nil {
-			newState := observe()
-			newStateJSON, _ := json.Marshal(newState)
-			remaining := a.maxRounds - (round + 1)
-			var systemWarning string
-			if remaining <= 2 {
-				systemWarning = fmt.Sprintf("\n[CRITICAL SYSTEM WARNING] You ONLY have %d interaction(s) remaining! You MUST finish the current task and ensure you return `{\"status\": \"done\"}` before you are cut off.", remaining)
+			newState, obsErr := observe()
+			if obsErr != nil {
+				errorMsg := fmt.Sprintf("CRITICAL ERROR executing actions on frontend: %v. Please carefully review the schema and correct your output.", obsErr)
+				messages = append(messages, schema.UserMessage(errorMsg))
 			} else {
-				systemWarning = fmt.Sprintf("\n[System Info] You have %d interaction(s) remaining. If the current canvas already meets the user's requirement, YOU MUST STOP NOW by responding ONLY with `{\"status\": \"done\"}`.", remaining)
-			}
+				newStateJSON, _ := json.Marshal(newState)
+				remaining := a.maxRounds - (round + 1)
+				var systemWarning string
+				if remaining <= 2 {
+					systemWarning = fmt.Sprintf("\n[CRITICAL SYSTEM WARNING] You ONLY have %d interaction(s) remaining! You MUST finish the current task and ensure you return `{\"status\": \"done\"}` before you are cut off.", remaining)
+				} else {
+					systemWarning = fmt.Sprintf("\n[System Info] You have %d interaction(s) remaining. If the current canvas already meets the user's requirement, YOU MUST STOP NOW by responding ONLY with `{\"status\": \"done\"}`.", remaining)
+				}
 
-			observation := fmt.Sprintf("Actions executed successfully. Updated canvas state (%d shapes): %s%s", len(newState), string(newStateJSON), systemWarning)
-			messages = append(messages, schema.UserMessage(observation))
+				observation := fmt.Sprintf("Actions executed successfully. Updated canvas state (%d shapes): %s%s", len(newState), string(newStateJSON), systemWarning)
+				messages = append(messages, schema.UserMessage(observation))
+			}
 		} else {
 			// No observation function, single-pass mode
 			break
