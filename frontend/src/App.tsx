@@ -30,18 +30,25 @@ export default function App() {
   const whiteboardRef = useRef<WhiteboardRef>(null);
 
   const handleServerMessage = (response: ServerResponse) => {
-    setStatusText("AI 执行成功");
+    if (response.feedback) {
+      setStatusText("需要补充信息");
+    } else {
+      setStatusText("AI 执行成功");
+    }
     setTimeout(() => setStatusText("等待指令"), 2000);
 
-    if (response.actions) {
-      whiteboardRef.current?.executeActions(response.actions);
+    if (response.actions || response.feedback) {
+      if (response.actions && response.actions.length > 0) {
+        whiteboardRef.current?.executeActions(response.actions);
+      }
 
       const newLog: DebugLog = {
         timestamp: new Date().toLocaleTimeString(),
         rawText: response.raw_text || "手动输入",
         taskAnalysis: response.task_analysis,
         plan: response.step_by_step_plan,
-        actions: response.actions,
+        actions: response.actions || [],
+        feedback: response.feedback,
       };
       setDebugLogs((prev) => [newLog, ...prev]);
     }
@@ -49,6 +56,7 @@ export default function App() {
 
   const { wsStatus, sendRequest } = useWebSocket({
     onMessage: handleServerMessage,
+    getCanvasState: () => whiteboardRef.current?.getCanvasStateSnapshot() ?? [],
   });
 
   const handleVoiceResult = (text: string) => {
@@ -177,7 +185,7 @@ export default function App() {
                     }}
                     className={`z-10 hover:scale-105 active:scale-95 transition-transform ${isRecording ? 'recording' : ''}`}
                   />
-                  {isRecording && <div className="pulse-ring-outer !bg-rose-500/15" style={{ animation: 'pulse-ring-anim 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite' }} />}
+                  {isRecording && <div className="pulse-ring-outer bg-rose-500/15!" style={{ animation: 'pulse-ring-anim 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite' }} />}
                 </div>
               </Tooltip>
               <div 
