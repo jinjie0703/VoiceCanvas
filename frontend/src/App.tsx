@@ -93,7 +93,7 @@ export default function App() {
             borderRightWidth: leftPanelVisible ? '1px' : '0px',
             transition: 'width 0.2s ease, padding 0.2s ease, border-width 0.2s ease',
           }}
-          className="h-full bg-white border-slate-200 overflow-y-auto flex flex-col flex-shrink-0"
+          className="h-full bg-white border-slate-200 overflow-y-auto flex flex-col shrink-0"
         >
           {leftPanelVisible && (
             <ControlPanel
@@ -111,7 +111,7 @@ export default function App() {
         </div>
 
         {/* Center Canvas content */}
-        <div className="relative h-full flex-grow w-0 min-w-0 bg-white">
+        <div className="relative h-full grow w-0 min-w-0 bg-white">
           {/* Floating panel-unfold triggers: Left trigger on top-left, Right trigger on top-right */}
           {!leftPanelVisible && (
             <div className="absolute top-4 left-4 z-50">
@@ -153,7 +153,7 @@ export default function App() {
             borderLeftWidth: rightPanelVisible ? '1px' : '0px',
             transition: 'width 0.2s ease, padding 0.2s ease, border-width 0.2s ease',
           }}
-          className="h-full bg-white border-slate-200 overflow-y-auto flex flex-col flex-shrink-0"
+          className="h-full bg-white border-slate-200 overflow-y-auto flex flex-col shrink-0"
         >
           {rightPanelVisible && (
             <DebugLogs

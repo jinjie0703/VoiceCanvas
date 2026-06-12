@@ -11,7 +11,7 @@ export interface DrawAction {
   command: string;
   type?: string;
   target_id?: string;
-  props?: Record<string, any>;
+  props?: Record<string, unknown>;
   position?: string;
   text?: string;
 }

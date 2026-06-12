@@ -25,13 +25,15 @@ export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount 
     const canvasH = window.innerHeight;
 
     return shapes.map((s) => {
-      const props = s.props as any;
-      let textVal = '';
-      if (s.type === 'note') {
-        textVal = props.richText ? renderPlaintextFromRichText(editorRef.current!, props.richText) : '';
-      } else {
-        textVal = props.text || '';
-      }
+      const props = s.props as {
+        richText?: Parameters<typeof renderPlaintextFromRichText>[1];
+        text?: string;
+        geo?: string;
+        color?: string;
+      };
+      const textVal = s.type === 'note'
+        ? (props.richText ? renderPlaintextFromRichText(editorRef.current!, props.richText) : '')
+        : (props.text || '');
       return {
         id: s.id,
         type: s.type,
@@ -56,7 +58,7 @@ export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount 
           const { x, y } = getCoordsFromSemantic(action.position || 'center', canvasW, canvasH);
           const shapeType = action.type === 'note' ? 'note' : 'geo';
           
-          const shapeProps: any = {
+          const shapeProps: Record<string, unknown> = {
             color: action.props?.color || (shapeType === 'note' ? 'yellow' : 'blue'),
           };
 
@@ -74,7 +76,7 @@ export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount 
             x: x,
             y: y,
             props: shapeProps,
-          } as any);
+          } as Parameters<Editor['createShape']>[0]);
         } else if (action.command === 'modify_shape') {
           if (!action.target_id) return;
           const targetId = action.target_id as TLShapeId;
@@ -102,7 +104,7 @@ export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount 
               ...currentShape.props,
               ...cleanProps,
             },
-          } as any);
+          } as Parameters<Editor['updateShape']>[0]);
         } else if (action.command === 'delete_shape') {
           if (!action.target_id) return;
           editor.deleteShape(action.target_id as TLShapeId);
