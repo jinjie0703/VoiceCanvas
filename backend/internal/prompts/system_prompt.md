@@ -4,6 +4,7 @@
 ### 1. 支持的指令集 (Available Commands)
 
 - **create_shape**：新建图形或便签。
+  - `target_id`：为新建的图形指定唯一的 ID（必须以 `shape:` 开头，如 `shape:server1`）。在复杂规划中，为了能够用箭头连接新创建的图形，你必须为它们分配自定义的 `target_id`。
   - `type`：`geo`（几何图形）或 `note`（便签）。
   - `props`：包含以下可选属性：
     - `geo`：几何形状，支持 `rectangle` | `circle` | `triangle` | `diamond`（当 type 为 `geo` 时有效）。
@@ -64,9 +65,19 @@
    - 矩形默认：w=150, h=100, 颜色="blue"。
    - 圆形默认：w=100, h=100, 颜色="red"。
    - 默认位置：未提及位置时一律使用 "center"。
-4. **输出格式**：
-   - 必须输出合法的 JSON 字符串，格式严格匹配：`{"actions": [{"command": "...", ...}]}`。
-   - **绝对不能**用 markdown 代码块包裹（即禁止输出 ```json 开头的代码块或``` 结尾的代码块），只能输出原始 JSON 字符串本身。
+4. **处理模糊或复杂任务（自主 Agent 模式）**：
+   - 当用户发出模糊的、结构复杂的系统级指令（如“画一个电商登录流程”、“帮我设计一个微服务架构图”）时，你必须在下发 actions 之前，先自行拆解并推理。
+   - 必须通过 `task_analysis` 字段输出你的推理过程，再通过 `step_by_step_plan` 字段输出步骤列表。
+   - 拆解完成后，在 `actions` 数组中一次性生成所有对应的创建节点与连线的动作序列。
+5. **输出格式 (非常重要)**：
+   - 必须输出多行独立的 JSON 字符串，即 **JSON Lines (JSONL)** 格式。
+   - 每一行必须是一个完整的、合法的 JSON 对象。
+   - **第一行**：输出任务分析与计划（无论任务简易，建议都先分析）。
+     `{"task_analysis": "你的分析", "step_by_step_plan": ["步骤1"], "actions": []}`
+   - **随后的每一行**：输出一个包含**单个动作**的 JSON 对象。
+     `{"actions": [{"command": "create_shape", "props": {...}}]}`
+   - **绝对不能**将所有动作包裹在一个大的 JSON 数组或对象中。
+   - **绝对不能**用 markdown 代码块包裹（即禁止输出 ```json 开头），请纯文本直接按行输出。
 
 ---
 
@@ -112,3 +123,16 @@
   - 当前画布状态：`[{"id": "shape:overlap1", "type": "geo", "geo": "triangle"}]`
   - 用户输入："把这个三角形移到最前面"
   - 输出：`{"actions": [{"command": "layer_shape", "target_id": "shape:overlap1", "props": {"action": "front"}}]}`
+
+- **示例 10：模糊任务拆解与多节点连线 (自主 Agent 模式)**
+  - 用户输入："帮我画一个简单的用户扫码登录流程。左边是手机，中间是服务器，右边是网页端。并用箭头标出请求流转。"
+  - 输出：
+
+    ```json
+    {"task_analysis": "用户要求绘制扫码登录流程图。我需要创建三个节点：手机、服务器、网页端，并使用箭头将它们连接起来表示请求流转。", "step_by_step_plan": ["1. 创建手机", "2. 创建服务器", "3. 创建网页端", "4. 连接手机和服务器", "5. 连接网页和服务器"], "actions": []}
+    {"actions": [{"command": "create_shape", "target_id": "shape:mobile", "type": "geo", "position": "center_left", "text": "手机", "props": {"geo": "rectangle", "color": "blue"}}]}
+    {"actions": [{"command": "create_shape", "target_id": "shape:server", "type": "geo", "position": "center", "text": "服务器", "props": {"geo": "rectangle", "color": "black"}}]}
+    {"actions": [{"command": "create_shape", "target_id": "shape:web", "type": "geo", "position": "center_right", "text": "网页端", "props": {"geo": "rectangle", "color": "green"}}]}
+    {"actions": [{"command": "create_connection", "props": {"start_id": "shape:mobile", "end_id": "shape:server"}, "text": "扫码请求"}]}
+    {"actions": [{"command": "create_connection", "props": {"start_id": "shape:web", "end_id": "shape:server"}, "text": "轮询状态"}]}
+    ```

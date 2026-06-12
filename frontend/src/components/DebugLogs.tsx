@@ -87,6 +87,23 @@ export const DebugLogs: React.FC<DebugLogsProps> = ({ logs, onClear, onHidePanel
                 <div className="text-sky-600 font-semibold text-xs mb-2">
                   用户输入: {logItem.rawText}
                 </div>
+                {logItem.taskAnalysis && (
+                  <div className="bg-slate-100 rounded-md p-2 mb-2">
+                    <Text className="text-slate-600 text-[11px] italic">
+                      " {logItem.taskAnalysis} "
+                    </Text>
+                  </div>
+                )}
+                {logItem.plan && logItem.plan.length > 0 && (
+                  <div className="mb-2">
+                    <Text className="text-slate-500 font-semibold text-[11px] mb-1 block">Agent 计划:</Text>
+                    <ul className="pl-4 m-0 text-[11px] text-slate-600 list-disc">
+                      {logItem.plan.map((step, idx) => (
+                        <li key={idx} className="mb-0.5">{step}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <Card
                   variant="outlined"
                   className="bg-slate-50/50 border-slate-100 rounded-xl"

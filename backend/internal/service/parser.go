@@ -7,5 +7,5 @@ import (
 
 // ParserService defines the contract for parsing voice input into whiteboard actions.
 type ParserService interface {
-	Parse(ctx context.Context, text string, state []model.CanvasElement) model.ServerResponse
+	ParseStream(ctx context.Context, text string, state []model.CanvasElement, onChunk func(model.ServerResponse))
 }

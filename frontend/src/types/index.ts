@@ -17,6 +17,8 @@ export interface DrawAction {
 }
 
 export interface ServerResponse {
+  task_analysis?: string;
+  step_by_step_plan?: string[];
   actions: DrawAction[];
   raw_text?: string;
 }
@@ -24,5 +26,7 @@ export interface ServerResponse {
 export interface DebugLog {
   timestamp: string;
   rawText: string;
+  taskAnalysis?: string;
+  plan?: string[];
   actions: DrawAction[];
 }

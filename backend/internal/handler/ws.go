@@ -60,23 +60,21 @@ func (h *WebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		slog.Info("Received message", "text", clientMsg.Text, "state_len", len(clientMsg.CanvasState))
 
-		// Process using LLM Parser or Mock Parser
-		responseData := h.parserService.Parse(ctx, clientMsg.Text, clientMsg.CanvasState)
+		// Process using LLM Parser or Mock Parser, streaming chunks back
+		h.parserService.ParseStream(ctx, clientMsg.Text, clientMsg.CanvasState, func(chunk model.ServerResponse) {
+			// Ensure raw text is set for the chunk
+			chunk.RawText = clientMsg.Text
 
-		// Ensure raw text is set
-		responseData.RawText = clientMsg.Text
+			responseBytes, err := json.Marshal(chunk)
+			if err != nil {
+				slog.Error("Failed to marshal stream chunk", "error", err)
+				return
+			}
 
-		responseBytes, err := json.Marshal(responseData)
-		if err != nil {
-			slog.Error("Failed to marshal response", "error", err)
-			h.sendError(conn, "Failed to encode response")
-			continue
-		}
-
-		if err := conn.WriteMessage(websocket.TextMessage, responseBytes); err != nil {
-			slog.Error("WebSocket write error", "error", err)
-			break
-		}
+			if err := conn.WriteMessage(websocket.TextMessage, responseBytes); err != nil {
+				slog.Error("WebSocket write error during stream", "error", err)
+			}
+		})
 	}
 }
 

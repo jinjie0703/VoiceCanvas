@@ -13,8 +13,8 @@ func NewMockParser() *MockParser {
 	return &MockParser{}
 }
 
-// Parse runs mock detection logic on incoming text.
-func (p *MockParser) Parse(ctx context.Context, text string, state []model.CanvasElement) model.ServerResponse {
+// ParseStream runs mock detection logic on incoming text and streams the result.
+func (p *MockParser) ParseStream(ctx context.Context, text string, state []model.CanvasElement, onChunk func(model.ServerResponse)) {
 	textLower := strings.ToLower(text)
 	actions := []model.DrawAction{}
 
@@ -87,5 +87,5 @@ func (p *MockParser) Parse(ctx context.Context, text string, state []model.Canva
 		})
 	}
 
-	return model.ServerResponse{Actions: actions}
+	onChunk(model.ServerResponse{Actions: actions})
 }

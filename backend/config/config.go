@@ -28,12 +28,12 @@ func Load() *Config {
 
 	modelName := os.Getenv("MODEL_NAME")
 	if modelName == "" {
-		modelName = "deepseek-ai/DeepSeek-V4-Pro"
+		modelName = "qwen-plus"
 	}
 
 	baseURL := os.Getenv("MODELSCOPE_BASE_URL")
 	if baseURL == "" {
-		baseURL = "https://api-inference.modelscope.cn/v1"
+		baseURL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 	}
 
 	return &Config{

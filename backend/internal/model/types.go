@@ -28,6 +28,8 @@ type DrawAction struct {
 
 // ServerResponse is the JSON response wrapper containing parsed actions and feedback.
 type ServerResponse struct {
-	Actions []DrawAction `json:"actions"`
-	RawText string       `json:"raw_text,omitempty"` // Echoed user voice input for verification
+	TaskAnalysis   string       `json:"task_analysis,omitempty"`
+	StepByStepPlan []string     `json:"step_by_step_plan,omitempty"`
+	Actions        []DrawAction `json:"actions"`
+	RawText        string       `json:"raw_text,omitempty"` // Echoed user voice input for verification
 }

@@ -30,6 +30,8 @@ export default function App() {
       const newLog: DebugLog = {
         timestamp: new Date().toLocaleTimeString(),
         rawText: response.raw_text || '手动输入',
+        taskAnalysis: response.task_analysis,
+        plan: response.step_by_step_plan,
         actions: response.actions,
       };
       setDebugLogs((prev) => [newLog, ...prev]);
