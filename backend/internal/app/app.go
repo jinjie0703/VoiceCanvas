@@ -91,8 +91,11 @@ func Run() {
 		}
 	}
 
+	// Initialize Engine
+	engine := service.NewEngine(parserService, enhancer, ag)
+
 	// Initialize handlers
-	wsHandler := handler.NewWebSocketHandler(parserService, enhancer, ag)
+	wsHandler := handler.NewWebSocketHandler(engine)
 
 	// Register routes
 	http.Handle("/ws", wsHandler)
