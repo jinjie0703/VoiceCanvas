@@ -37,8 +37,9 @@ export default function AppLayout() {
   // Buffer and lock for sequential processing
   const messageQueue = useRef<string[]>([]);
   const isProcessing = useRef<boolean>(false);
+  const executionErrorsRef = useRef<string[]>([]);
 
-  const processNextMessage = () => {
+  const processNextMessage = async () => {
     if (isProcessing.current || messageQueue.current.length === 0) {
       return;
     }
@@ -49,7 +50,12 @@ export default function AppLayout() {
     messageQueue.current = []; // Clear the buffer
 
     const canvasSnapshot = whiteboardRef.current?.getCanvasStateSnapshot() || [];
-    const success = sendRequest(nextText, canvasSnapshot);
+    let base64Image: string | undefined;
+    if (whiteboardRef.current?.exportSnapshotAsBase64) {
+      base64Image = await whiteboardRef.current.exportSnapshotAsBase64();
+    }
+
+    const success = sendRequest(nextText, canvasSnapshot, undefined, base64Image);
     if (success) {
       setStatusText("🧠 AI 思考中...");
     } else {
@@ -62,7 +68,9 @@ export default function AppLayout() {
     // Intercept agent's internal request for canvas state observation
     if (response.raw_text === "__request_observation__") {
       const canvasSnapshot = whiteboardRef.current?.getCanvasStateSnapshot() || [];
-      sendRequest("__observation__", canvasSnapshot);
+      const errorMsg = executionErrorsRef.current.length > 0 ? executionErrorsRef.current.join("; ") : undefined;
+      sendRequest("__observation__", canvasSnapshot, errorMsg);
+      executionErrorsRef.current = []; // Clear after sending
       return;
     }
 
@@ -86,7 +94,10 @@ export default function AppLayout() {
 
     if (response.actions || response.feedback || response.voice_reply) {
       if (response.actions && response.actions.length > 0) {
-        whiteboardRef.current?.executeActions(response.actions);
+        const errors = whiteboardRef.current?.executeActions(response.actions) || [];
+        if (errors.length > 0) {
+          executionErrorsRef.current.push(...errors);
+        }
       }
 
       const newLog: DebugLog = {

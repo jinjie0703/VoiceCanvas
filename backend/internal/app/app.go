@@ -70,9 +70,9 @@ func Run() {
 			slog.Info("No embeddings.json found. Run 'go run main.go preprocess' to generate. Agent will run without RAG.")
 		}
 
-		// Initialize Agent
+		// Initialize Agent with Vision Model
 		agentInstance, err := agent.NewAgent(ctx, agent.Config{
-			ModelName: cfg.LargeModel,
+			ModelName: cfg.VisionModel,
 			APIKey:    cfg.LLMAPIKey,
 			BaseURL:   cfg.LLMBaseURL,
 			Retriever: retriever,

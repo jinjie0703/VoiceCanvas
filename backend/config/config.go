@@ -14,6 +14,7 @@ type Config struct {
 	LLMAPIKey   string
 	FastModel   string
 	LargeModel  string
+	VisionModel string
 }
 
 // Load reads config variables from the environment and .env file.
@@ -53,6 +54,11 @@ func Load() *Config {
 		largeModel = "qwen-plus"
 	}
 
+	visionModel := os.Getenv("VISION_MODEL")
+	if visionModel == "" {
+		visionModel = "qwen-vl-max-latest"
+	}
+
 	return &Config{
 		Port:        port,
 		LLMProvider: provider,
@@ -60,5 +66,6 @@ func Load() *Config {
 		LLMAPIKey:   apiKey,
 		FastModel:   fastModel,
 		LargeModel:  largeModel,
+		VisionModel: visionModel,
 	}
 }
