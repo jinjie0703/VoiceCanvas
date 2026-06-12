@@ -112,6 +112,15 @@ func (p *LLMParser) Parse(ctx context.Context, text string, state []model.Canvas
 			continue
 		}
 
+		if len(resp.Choices) == 0 {
+			slog.Error("LLM API returned empty choices", "attempt", attempt)
+			if attempt == maxRetries {
+				return model.ServerResponse{Actions: []model.DrawAction{}}
+			}
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
 		jsonOutput = resp.Choices[0].Message.Content
 		jsonOutput = cleanJSONString(jsonOutput)
 

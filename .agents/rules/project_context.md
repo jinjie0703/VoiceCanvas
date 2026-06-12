@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # VoiceCanvas Agent Context
 
 ## 项目概述 (Project Overview)
