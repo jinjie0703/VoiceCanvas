@@ -92,3 +92,26 @@ func (e *Enhancer) Enhance(ctx context.Context, text string, state []model.Canva
 
 	return &result, nil
 }
+
+// StreamEnhance provides a streaming chat completion for optimizing a prompt into a detailed description.
+func (e *Enhancer) StreamEnhance(ctx context.Context, text string) (*openai.ChatCompletionStream, error) {
+	messages := []openai.ChatCompletionMessage{
+		{
+			Role:    openai.ChatMessageRoleSystem,
+			Content: "你是一个专业的画图提示词优化专家。请将用户输入的简短提示词扩充成详细的拓扑图、架构图、流程图或其他图表描述。请详细列出涉及的核心组件、合理的布局位置、连线关系以及样式建议（如颜色、虚线等），使其极度适合交给 AI 画图引擎执行。直接输出优化后的完整提示词，不要解释，不要说任何多余的话。",
+		},
+		{
+			Role:    openai.ChatMessageRoleUser,
+			Content: text,
+		},
+	}
+
+	req := openai.ChatCompletionRequest{
+		Model:       e.fastModel,
+		Messages:    messages,
+		Temperature: 0.7,
+		Stream:      true,
+	}
+
+	return e.client.CreateChatCompletionStream(ctx, req)
+}

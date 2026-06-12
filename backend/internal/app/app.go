@@ -96,10 +96,12 @@ func Run() {
 
 	// Initialize handlers
 	wsHandler := handler.NewWebSocketHandler(engine)
+	optimizeHandler := handler.NewOptimizeHandler(enhancer)
 
 	// Register routes
 	http.Handle("/ws", wsHandler)
 	http.HandleFunc("/api/image", handler.HandleImage)
+	http.Handle("/api/optimize", optimizeHandler)
 
 	// Start server
 	slog.Info("Go Backend listening", "address", "http://localhost:"+cfg.Port+"/ws")

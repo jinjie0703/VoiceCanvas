@@ -68,6 +68,9 @@ func (e *Engine) ProcessInput(ctx context.Context, session ClientSession, client
 	if e.agent != nil {
 		slog.Info("Using Agent mode")
 		go func(p string, s []model.CanvasElement, text string) {
+			defer func() {
+				_ = session.SendActions([]model.DrawAction{}, "__done__")
+			}()
 			e.agent.Run(ctx, p, s,
 				func(resp model.ServerResponse) {
 					// Add raw text back so client knows what it belongs to
@@ -87,6 +90,9 @@ func (e *Engine) ProcessInput(ctx context.Context, session ClientSession, client
 		// Legacy Mode
 		slog.Info("Using Legacy Parser mode")
 		go func(p string, s []model.CanvasElement, text string) {
+			defer func() {
+				_ = session.SendActions([]model.DrawAction{}, "__done__")
+			}()
 			e.parserService.ParseStream(ctx, p, s, func(chunk model.ServerResponse) {
 				_ = session.SendActions(chunk.Actions, text)
 			})
