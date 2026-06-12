@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import type { ServerResponse } from '../types';
+import type { ServerResponse, CanvasElement } from '../types';
 
 interface UseWebSocketProps {
   onMessage: (response: ServerResponse) => void;
@@ -8,6 +8,11 @@ interface UseWebSocketProps {
 export function useWebSocket({ onMessage }: UseWebSocketProps) {
   const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected'>('disconnected');
   const wsRef = useRef<WebSocket | null>(null);
+  const onMessageRef = useRef(onMessage);
+
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  });
 
   useEffect(() => {
     const socketUrl = `ws://${window.location.hostname}:8080/ws`;
@@ -34,7 +39,7 @@ export function useWebSocket({ onMessage }: UseWebSocketProps) {
       socket.onmessage = (event) => {
         try {
           const response: ServerResponse = JSON.parse(event.data);
-          onMessage(response);
+          onMessageRef.current(response);
         } catch (e) {
           console.error('Failed to parse server response:', e);
         }
@@ -50,7 +55,7 @@ export function useWebSocket({ onMessage }: UseWebSocketProps) {
     };
   }, []);
 
-  const sendRequest = (text: string, canvasState: any[]): boolean => {
+  const sendRequest = (text: string, canvasState: CanvasElement[]): boolean => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       console.error('WebSocket not connected');
       return false;

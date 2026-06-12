@@ -109,9 +109,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             </Text>
             
             <Card
-              bordered
-              className="bg-slate-50/50 border-slate-100 rounded-xl min-h-[70px] flex items-center justify-center"
-              bodyStyle={{ padding: 12, width: '100%' }}
+              variant="outlined"
+              className="bg-slate-50/50 border-slate-100 rounded-xl min-h-17.5 flex items-center justify-center"
+              styles={{ body: { padding: 12, width: '100%' } }}
             >
               <Text className="text-slate-700 text-sm font-medium">
                 {transcript}

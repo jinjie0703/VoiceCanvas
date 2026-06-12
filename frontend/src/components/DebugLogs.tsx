@@ -12,7 +12,7 @@ interface DebugLogsProps {
 }
 
 export const DebugLogs: React.FC<DebugLogsProps> = ({ logs, onClear, onHidePanel }) => {
-  const renderJsonHighlight = (jsonObj: any) => {
+  const renderJsonHighlight = (jsonObj: unknown) => {
     const jsonString = JSON.stringify(jsonObj, null, 2);
     const highlighted = jsonString.replace(
       /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(?=\s*:))|("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*")|(\b(true|false|null)\b)|(\b[0-9]+\b)/g,
@@ -88,12 +88,12 @@ export const DebugLogs: React.FC<DebugLogsProps> = ({ logs, onClear, onHidePanel
                   用户输入: {logItem.rawText}
                 </div>
                 <Card
-                  bordered
+                  variant="outlined"
                   className="bg-slate-50/50 border-slate-100 rounded-xl"
-                  bodyStyle={{ padding: 12 }}
+                  styles={{ body: { padding: 12 } }}
                 >
                   <pre
-                    className="debug-json m-0 p-0 bg-transparent border-none text-[11px] max-h-[200px] overflow-y-auto"
+                    className="debug-json m-0 p-0 bg-transparent border-none text-[11px] max-h-50 overflow-y-auto"
                     dangerouslySetInnerHTML={renderJsonHighlight({ actions: logItem.actions })}
                   />
                 </Card>
