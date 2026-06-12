@@ -23,7 +23,6 @@ interface WindowWithSpeech extends Window {
 }
 
 export function useSpeechRecognition({ onResult, onListeningStateChange }: UseSpeechRecognitionProps) {
-  const [isRecording, setIsRecording] = useState(false);
   const [isSupported] = useState(() => {
     if (typeof window === 'undefined') return false;
     const win = window as unknown as WindowWithSpeech;
@@ -33,6 +32,10 @@ export function useSpeechRecognition({ onResult, onListeningStateChange }: UseSp
 
   const onResultRef = useRef(onResult);
   const onListeningStateChangeRef = useRef(onListeningStateChange);
+  const intentionallyStoppedRef = useRef(false);
+
+  const [isAwake, setIsAwake] = useState(false);
+  const isAwakeRef = useRef(false);
 
   useEffect(() => {
     onResultRef.current = onResult;
@@ -40,54 +43,100 @@ export function useSpeechRecognition({ onResult, onListeningStateChange }: UseSp
   });
 
   useEffect(() => {
+    isAwakeRef.current = isAwake;
+    onListeningStateChangeRef.current?.(isAwake);
+  }, [isAwake]);
+
+  useEffect(() => {
     const win = window as unknown as WindowWithSpeech;
     const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
     if (SpeechRecognition) {
       const rec = new SpeechRecognition();
-      rec.continuous = false;
+      rec.continuous = true;
       rec.interimResults = false;
       rec.lang = 'zh-CN';
 
       rec.onstart = () => {
-        setIsRecording(true);
-        onListeningStateChangeRef.current?.(true);
-      };
-
-      rec.onerror = (e: unknown) => {
-        console.error('Speech recognition error:', e);
-        setIsRecording(false);
-        onListeningStateChangeRef.current?.(false);
+        // Physical mic is on, but logical awake state is separate
       };
 
       rec.onend = () => {
-        setIsRecording(false);
-        onListeningStateChangeRef.current?.(false);
+        if (!intentionallyStoppedRef.current) {
+          try {
+            rec.start();
+          } catch {
+            // ignore error if it's already started
+          }
+        }
       };
 
-      rec.onresult = (event: { results: { transcript: string }[][] }) => {
-        const resultText = event.results[0][0].transcript;
-        onResultRef.current(resultText);
+      rec.onerror = (e: unknown) => {
+        const err = e as { error?: string };
+        if (err.error === 'not-allowed') {
+          intentionallyStoppedRef.current = true;
+          setIsAwake(false);
+        }
+      };
+
+      rec.onresult = (event: unknown) => {
+        const speechEvent = event as { results: { isFinal: boolean; [key: number]: { transcript: string } }[] };
+        const results = speechEvent.results;
+        if (!results || results.length === 0) return;
+        const latestResult = results[results.length - 1];
+        if (!latestResult.isFinal) return;
+
+        const text = latestResult[0].transcript.toLowerCase().trim();
+        if (!text) return;
+
+        if (!isAwakeRef.current) {
+          // Listen for wake word
+          const match = text.match(/(hi|嗨|hai|海)[\s,，]*(canvas|画板|画布)(.*)/i);
+          if (match) {
+            setIsAwake(true);
+            const command = match[3].trim();
+            if (command) {
+              onResultRef.current(command);
+            }
+          }
+        } else {
+          // Listen for sleep word or standard command
+          const sleepMatch = text.match(/(关闭|退出|休息)[\s,，]*(canvas|画板|画布)?/i);
+          if (sleepMatch) {
+            setIsAwake(false);
+            return;
+          }
+          onResultRef.current(text);
+        }
       };
 
       recognitionRef.current = rec;
+      // Start physical listening immediately in the background
+      try {
+        rec.start();
+      } catch {
+        // ignore initialization errors
+      }
     }
+
+    return () => {
+      intentionallyStoppedRef.current = true;
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // ignore cleanup errors
+        }
+      }
+    };
   }, []);
 
   const startRecording = () => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.start();
-      } catch {
-        recognitionRef.current.stop();
-      }
-    }
+    setIsAwake(true);
   };
 
   const stopRecording = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
+    setIsAwake(false);
   };
 
-  return { isRecording, isSupported, startRecording, stopRecording };
+  return { isRecording: isAwake, isSupported, startRecording, stopRecording };
 }
