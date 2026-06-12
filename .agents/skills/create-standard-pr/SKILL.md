@@ -6,9 +6,11 @@ description: 当用户要求提交代码或创建 PR 时触发。用于执行代
 # Create Standard PR Skill
 
 ## 触发条件
+
 当用户要求“帮我提交代码”、“保存当前工作”或“创建一个 PR”时自动触发。
 
 ## Instructions (执行步骤)
+
 当你需要为用户创建 PR 时，请严格按照以下步骤执行：
 
 1. **状态检查与单一职责检查**：
@@ -25,11 +27,17 @@ description: 当用户要求提交代码或创建 PR 时触发。用于执行代
    - 执行 `git add .` 和 `git commit -m "<你的message>"`。
 5. **推送到远程**：
    - 执行 `git push origin <当前分支名>`。
-6. **起草 PR 描述**：
-   - 根据修改内容，为用户自动草拟一份结构化的 PR 描述文本。内容必须包含以下 4 项：
+6. **创建 Pull Request**：
+   - **起草 PR 描述**：自动草拟符合规范的 PR 描述，必须包含以下 4 项：
      - **PR 标题**：一句话说明本 PR 新增/修改了什么。
      - **功能描述**：说明该功能的作用与使用方式。
      - **实现思路**：简要说明技术选型或核心实现逻辑。
      - **测试方式**：说明如何验证该功能正常运行（即刚才运行的本地构建校验等）。
-   - 将起草好的 PR 描述发送给用户，并引导用户前往 GitHub 网页端点击 "Compare & pull request" 按钮完成最终的 PR 创建。
-
+   - **自动创建 PR**：
+     - 将上述描述写入一个本地临时文件（例如 `.agents/temp_pr_body.md`）。
+     - 运行 `gh pr create --title "<PR标题>" --body-file ".agents/temp_pr_body.md" --base main --head <当前分支名>`。
+     - PR 创建成功后删除该临时文件。
+     - *注：如果系统未安装 `gh` 或未登录授权，则回退为：将 PR 描述展示给用户，引导其去 GitHub 网页端手动点击 `Compare & pull request` 按钮创建。*
+7. **合并与本地同步**：
+   - 运行 `gh pr merge <PR号> --merge` 自动将 PR 合并入主分支（若有冲突或需要代码审查，可提示用户手动合并）。
+   - 合并完成后，在本地执行 `git checkout main` 并运行 `git pull origin main` 同步云端最新提交，保持工作区干净。
