@@ -31,8 +31,8 @@ export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount 
         geo?: string;
         color?: string;
       };
-      const textVal = s.type === 'note'
-        ? (props.richText ? renderPlaintextFromRichText(editorRef.current!, props.richText) : '')
+      const textVal = props.richText 
+        ? renderPlaintextFromRichText(editorRef.current!, props.richText) 
         : (props.text || '');
       return {
         id: s.id,
@@ -65,13 +65,15 @@ export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount 
           if (shapeType === 'note') {
             shapeProps.richText = toRichText(action.text || '');
           } else {
-            shapeProps.text = action.text || '';
+            shapeProps.richText = toRichText(action.text || '');
             shapeProps.w = action.props?.w || 150;
             shapeProps.h = action.props?.h || 100;
             shapeProps.geo = action.props?.geo || 'rectangle';
           }
           
+          const shapeId = action.target_id ? (action.target_id as TLShapeId) : undefined;
           editor.createShape({
+            id: shapeId,
             type: shapeType,
             x: x,
             y: y,
@@ -93,7 +95,7 @@ export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount 
             }
           } else {
             if (action.text !== undefined) {
-              cleanProps.text = action.text;
+              cleanProps.richText = toRichText(action.text);
             }
           }
 
@@ -136,7 +138,9 @@ export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount 
             meta: {},
           }]);
 
+          const shapeId = action.target_id ? (action.target_id as TLShapeId) : undefined;
           editor.createShape({
+            id: shapeId,
             type: 'image',
             x,
             y,
@@ -160,8 +164,9 @@ export const Whiteboard = forwardRef<WhiteboardRef, WhiteboardProps>(({ onMount 
             props: {
               start: { x: 0, y: 0 },
               end: { x: 100, y: 100 },
-              text: action.text || '',
+              richText: toRichText(action.text || ''),
               color: (action.props?.color as 'black' | 'red' | 'blue' | 'green' | 'orange' | 'yellow') || 'black',
+              bend: 40,
             },
           } as Parameters<Editor['createShape']>[0]);
 
