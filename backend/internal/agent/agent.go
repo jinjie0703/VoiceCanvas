@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"strings"
 
 	"voice-canvas-backend/internal/model"
 	"voice-canvas-backend/internal/prompts"
@@ -106,9 +105,13 @@ func (a *Agent) Run(ctx context.Context, enhancedPrompt string, canvasState []mo
 		}
 
 		var fullContent string
-		var lineBuffer string
 		var allActions []model.DrawAction
 		isDone := false
+
+		var inString bool
+		var escape bool
+		var braceCount int
+		var jsonBuffer string
 
 		for {
 			chunk, err := stream.Recv()
@@ -121,64 +124,58 @@ func (a *Agent) Run(ctx context.Context, enhancedPrompt string, canvasState []mo
 			}
 
 			if chunk != nil {
-				content := chunk.Content
-				fullContent += content
-				lineBuffer += content
+				for _, ch := range chunk.Content {
+					fullContent += string(ch)
 
-				for {
-					idx := strings.Index(lineBuffer, "\n")
-					if idx == -1 {
-						break
-					}
-
-					line := strings.TrimSpace(lineBuffer[:idx])
-					lineBuffer = lineBuffer[idx+1:]
-
-					if line == "" || strings.HasPrefix(line, "```") || !strings.HasPrefix(line, "{") {
+					if braceCount == 0 && ch == '{' {
+						jsonBuffer = "{"
+						braceCount = 1
 						continue
 					}
 
-					// Check for done signal
-					var doneCheck struct {
-						Status string `json:"status"`
-					}
-					if json.Unmarshal([]byte(line), &doneCheck) == nil && doneCheck.Status == "done" {
-						isDone = true
-						continue
-					}
-
-					// Parse as ServerResponse
-					var resp model.ServerResponse
-					if err := json.Unmarshal([]byte(line), &resp); err != nil {
-						continue
-					}
-
-					if len(resp.Actions) > 0 {
-						allActions = append(allActions, resp.Actions...)
-						onAction(resp)
+					if braceCount > 0 {
+						jsonBuffer += string(ch)
+						if escape {
+							escape = false
+							continue
+						}
+						if ch == '\\' {
+							escape = true
+							continue
+						}
+						if ch == '"' {
+							inString = !inString
+							continue
+						}
+						if !inString {
+							if ch == '{' {
+								braceCount++
+							} else if ch == '}' {
+								braceCount--
+								if braceCount == 0 {
+									// Parse the completed JSON object
+									var doneCheck struct {
+										Status string `json:"status"`
+									}
+									if err := json.Unmarshal([]byte(jsonBuffer), &doneCheck); err == nil && doneCheck.Status == "done" {
+										isDone = true
+									} else {
+										var resp model.ServerResponse
+										if err := json.Unmarshal([]byte(jsonBuffer), &resp); err == nil && len(resp.Actions) > 0 {
+											allActions = append(allActions, resp.Actions...)
+											onAction(resp)
+										}
+									}
+									jsonBuffer = "" // Reset for next object
+								}
+							}
+						}
 					}
 				}
 			}
 		}
 
 		stream.Close()
-
-		// Handle remaining buffer
-		lineBuffer = strings.TrimSpace(lineBuffer)
-		if lineBuffer != "" && strings.HasPrefix(lineBuffer, "{") && !strings.HasPrefix(lineBuffer, "```") {
-			var doneCheck struct {
-				Status string `json:"status"`
-			}
-			if json.Unmarshal([]byte(lineBuffer), &doneCheck) == nil && doneCheck.Status == "done" {
-				isDone = true
-			} else {
-				var resp model.ServerResponse
-				if err := json.Unmarshal([]byte(lineBuffer), &resp); err == nil && len(resp.Actions) > 0 {
-					allActions = append(allActions, resp.Actions...)
-					onAction(resp)
-				}
-			}
-		}
 
 		slog.Info("Agent response", "round", round+1, "content_len", len(fullContent))
 
