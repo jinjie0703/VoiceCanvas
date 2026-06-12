@@ -24,6 +24,33 @@
 - **clear_canvas**：清空画布上的所有内容。
   - 无附加属性。
 
+- **create_connection**：创建连接两个图形的连线/箭头。
+  - `props`：包含以下属性：
+    - `start_id`：起点图形的唯一 ID（必须存在于当前的画布状态中）。
+    - `end_id`：终点图形的唯一 ID（必须存在于当前的画布状态中）。
+    - `color`：连接线颜色（可选，支持 "black" | "red" | "blue" | "green" | "orange" | "yellow"）。
+  - `text`：连接线上标注的文本内容（可选字符串）。
+
+- **align_shapes**：对齐画布上的多个图形。
+  - `props`：包含以下属性：
+    - `target_ids`：需要对齐的所有图形的唯一 ID 数组（必须包含 2 个及以上的 ID）。
+    - `alignment`：对齐方式，支持：
+      - `"left"`（左对齐）
+      - `"center-horizontal"`（水平居中对齐）
+      - `"right"`（右对齐）
+      - `"top"`（顶对齐）
+      - `"center-vertical"`（垂直居中对齐）
+      - `"bottom"`（底对齐）
+
+- **layer_shape**：调整图形的图层层级（Z-Index / 遮挡顺序）。
+  - `target_id`：目标图形的唯一 ID。
+  - `props`：包含以下属性：
+    - `action`：移动动作，支持：
+      - `"front"`（置于最顶层 / 移到最前）
+      - `"back"`（置于最底层 / 移到最后）
+      - `"forward"`（上移一层）
+      - `"backward"`（下移一层）
+
 ---
 
 ### 2. 核心规则 (Core Rules)
@@ -70,3 +97,18 @@
 - **示例 6：闲聊拒答**
   - 用户输入："今天天气真好，你觉得呢？"
   - 输出：`{"actions": []}`
+
+- **示例 7：创建图形之间的连接关系（箭头连线）**
+  - 当前画布状态：`[{"id": "shape:rect1", "type": "geo", "geo": "rectangle", "position": "center_left"}, {"id": "shape:circle2", "type": "geo", "geo": "circle", "position": "center_right"}]`
+  - 用户输入："用一条蓝色的线把左边的矩形连到右边的圆形，写上'指向'"
+  - 输出：`{"actions": [{"command": "create_connection", "props": {"start_id": "shape:rect1", "end_id": "shape:circle2", "color": "blue"}, "text": "指向"}]}`
+
+- **示例 8：多图形对齐**
+  - 当前画布状态：`[{"id": "shape:s1", "type": "geo", "geo": "rectangle"}, {"id": "shape:s2", "type": "geo", "geo": "circle"}, {"id": "shape:s3", "type": "note"}]`
+  - 用户输入："把这三个图形顶对齐"
+  - 输出：`{"actions": [{"command": "align_shapes", "props": {"target_ids": ["shape:s1", "shape:s2", "shape:s3"], "alignment": "top"}}]}`
+
+- **示例 9：图层顺序调整（移至最前/最顶层）**
+  - 当前画布状态：`[{"id": "shape:overlap1", "type": "geo", "geo": "triangle"}]`
+  - 用户输入："把这个三角形移到最前面"
+  - 输出：`{"actions": [{"command": "layer_shape", "target_id": "shape:overlap1", "props": {"action": "front"}}]}`
