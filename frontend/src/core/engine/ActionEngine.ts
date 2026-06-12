@@ -10,7 +10,7 @@ import {
 } from "./handlers/shapeHandlers";
 import { handleCreateSvg, handleCreateImage } from "./handlers/mediaHandlers";
 import { handleCreateConnection } from "./handlers/connectionHandlers";
-import { handleClearCanvas, handleNativeTldrawShape } from "./handlers/systemHandlers";
+import { handleClearCanvas, handleNativeTldrawShape, handleGroupShapes, handleSelectShapes } from "./handlers/systemHandlers";
 
 export interface ActionContext {
   editor: Editor;
@@ -31,6 +31,8 @@ const handlers: Record<string, ActionHandler> = {
   create_connection: handleCreateConnection,
   clear_canvas: handleClearCanvas,
   native_tldraw_shape: handleNativeTldrawShape,
+  group_shapes: handleGroupShapes,
+  select_shapes: handleSelectShapes,
 };
 
 export const executeActionEngine = (actions: DrawAction[], context: ActionContext) => {

@@ -9,6 +9,7 @@ import {
 import zhCN from "antd/locale/zh_CN";
 import { useWebSocket } from "../../services/websocket/useWebSocket";
 import { useSpeechRecognition } from "../../services/speech/useSpeechRecognition";
+import { useTTS } from "../../services/speech/useTTS";
 import { ControlPanel } from "../panels/ControlPanel";
 import { DebugLogs } from "../panels/DebugLogs";
 import { HelpPanel } from "../panels/HelpPanel";
@@ -31,6 +32,7 @@ export default function AppLayout() {
   const setIsEditMode = useAppStore((state) => state.setIsEditMode);
 
   const whiteboardRef = useRef<WhiteboardRef>(null);
+  const { speak } = useTTS();
 
   // Buffer and lock for sequential processing
   const messageQueue = useRef<string[]>([]);
@@ -75,9 +77,14 @@ export default function AppLayout() {
 
     if (response.feedback) {
       setStatusText("需要补充信息");
+      speak(response.feedback);
+    }
+    
+    if (response.voice_reply) {
+      speak(response.voice_reply);
     }
 
-    if (response.actions || response.feedback) {
+    if (response.actions || response.feedback || response.voice_reply) {
       if (response.actions && response.actions.length > 0) {
         whiteboardRef.current?.executeActions(response.actions);
       }
@@ -89,6 +96,7 @@ export default function AppLayout() {
         plan: response.step_by_step_plan,
         actions: response.actions || [],
         feedback: response.feedback,
+        voiceReply: response.voice_reply,
       };
       addDebugLog(newLog);
     }

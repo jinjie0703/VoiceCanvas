@@ -42,12 +42,19 @@ export const Whiteboard = React.memo(
         const textVal = props.richText
           ? renderPlaintextFromRichText(editorRef.current!, props.richText)
           : props.text || "";
+        
+        const bounds = editorRef.current!.getShapePageBounds(s.id);
+
         return {
           id: s.id,
           type: s.type,
           geo: props.geo || undefined,
           color: props.color || "black",
           position: getSemanticPosition(s.x, s.y, canvasW, canvasH),
+          x: s.x,
+          y: s.y,
+          w: bounds?.w,
+          h: bounds?.h,
           text: textVal,
         };
       });
@@ -76,6 +83,7 @@ export const Whiteboard = React.memo(
 
     return (
       <Tldraw
+        persistenceKey="voice-canvas-local-store"
         hideUi={hideUi ?? true}
         onMount={(editor) => {
           editorRef.current = editor;
