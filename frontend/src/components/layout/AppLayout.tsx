@@ -93,7 +93,7 @@ export default function AppLayout() {
     }
   };
 
-  const handleServerMessage = (response: ServerResponse) => {
+  const handleServerMessage = async (response: ServerResponse) => {
     // Intercept agent's internal request for canvas state observation
     if (response.raw_text === "__request_observation__") {
       const canvasSnapshot =
@@ -127,8 +127,8 @@ export default function AppLayout() {
 
     if (response.actions || response.feedback || response.voice_reply) {
       if (response.actions && response.actions.length > 0) {
-        const errors =
-          whiteboardRef.current?.executeActions(response.actions) || [];
+        const result = await whiteboardRef.current?.executeActions(response.actions);
+        const errors = result || [];
         if (errors.length > 0) {
           executionErrorsRef.current.push(...errors);
         }
@@ -202,13 +202,15 @@ export default function AppLayout() {
             style={{ width: "380px" }}
             className="h-full p-6 overflow-y-auto shrink-0 box-border"
           >
-            <ControlPanel
-              isRecording={isRecording}
-              isSpeechSupported={isSpeechSupported}
-              onStartRecording={startRecording}
-              onStopRecording={stopRecording}
-              onSubmitManual={handleManualSubmit}
-            />
+            <ErrorBoundary>
+              <ControlPanel
+                isRecording={isRecording}
+                isSpeechSupported={isSpeechSupported}
+                onStartRecording={startRecording}
+                onStopRecording={stopRecording}
+                onSubmitManual={handleManualSubmit}
+              />
+            </ErrorBoundary>
           </div>
         </div>
 
@@ -344,7 +346,9 @@ export default function AppLayout() {
             style={{ width: "380px" }}
             className="h-full p-6 overflow-y-auto shrink-0 box-border"
           >
-            <DebugLogs />
+            <ErrorBoundary>
+              <DebugLogs />
+            </ErrorBoundary>
           </div>
         </div>
       </div>
