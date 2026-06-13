@@ -3,7 +3,7 @@ import type { ServerResponse, CanvasElement } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 
 interface UseWebSocketProps {
-  onMessage: (response: ServerResponse) => void;
+  onMessage: (response: ServerResponse) => void | Promise<void>;
 }
 
 export function useWebSocket({ onMessage }: UseWebSocketProps) {

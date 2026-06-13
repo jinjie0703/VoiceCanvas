@@ -14,7 +14,14 @@ export const DebugLogs: React.FC = () => {
   const onHidePanel = () => useAppStore.getState().setRightPanelVisible(false);
   const renderJsonHighlight = (jsonObj: unknown) => {
     const jsonString = JSON.stringify(jsonObj, null, 2);
-    const highlighted = jsonString.replace(
+    
+    // HTML Escape to prevent XSS
+    const escapedString = jsonString
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    const highlighted = escapedString.replace(
       /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(?=\s*:))|("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*")|(\b(true|false|null)\b)|(\b[0-9]+\b)/g,
       (match) => {
         let cls = styles['debug-json-number'];
