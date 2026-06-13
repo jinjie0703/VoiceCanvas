@@ -10,8 +10,8 @@ import (
 
 // ClientSession defines the interface for communicating with the connected client.
 type ClientSession interface {
-	// SendActions sends drawn actions to the client.
-	SendActions(actions []model.DrawAction, rawText string) error
+	// SendServerResponse sends the full ServerResponse payload to the client.
+	SendServerResponse(resp model.ServerResponse, rawText string) error
 	
 	// SendFeedback sends feedback (e.g. from enhancer validation) to the client.
 	SendFeedback(msg string, rawText string) error
@@ -67,14 +67,14 @@ func (e *Engine) ProcessInput(ctx context.Context, session ClientSession, client
 	// 3. Dispatch to Agent or Legacy Parser
 	if e.agent != nil {
 		slog.Info("Using Agent mode")
-		go func(p string, s []model.CanvasElement, text string) {
+		func(p string, s []model.CanvasElement, text string) {
 			defer func() {
-				_ = session.SendActions([]model.DrawAction{}, "__done__")
+				_ = session.SendServerResponse(model.ServerResponse{Actions: []model.DrawAction{}}, "__done__")
 			}()
 			e.agent.Run(ctx, p, s, clientMsg.Base64Image,
 				func(resp model.ServerResponse) {
 					// Add raw text back so client knows what it belongs to
-					_ = session.SendActions(resp.Actions, text)
+					_ = session.SendServerResponse(resp, text)
 				},
 				func() ([]model.CanvasElement, error) {
 					state, err := session.RequestObservation(ctx)
@@ -92,12 +92,12 @@ func (e *Engine) ProcessInput(ctx context.Context, session ClientSession, client
 	} else {
 		// Legacy Mode
 		slog.Info("Using Legacy Parser mode")
-		go func(p string, s []model.CanvasElement, text string) {
+		func(p string, s []model.CanvasElement, text string) {
 			defer func() {
-				_ = session.SendActions([]model.DrawAction{}, "__done__")
+				_ = session.SendServerResponse(model.ServerResponse{Actions: []model.DrawAction{}}, "__done__")
 			}()
 			e.parserService.ParseStream(ctx, p, s, func(chunk model.ServerResponse) {
-				_ = session.SendActions(chunk.Actions, text)
+				_ = session.SendServerResponse(chunk, text)
 			})
 		}(finalPrompt, clientMsg.CanvasState, clientMsg.Text)
 	}

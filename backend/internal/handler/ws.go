@@ -44,13 +44,11 @@ type wsSession struct {
 	conn          *websocket.Conn
 	writeMu       *sync.Mutex
 	observationCh chan ObservationResponse
+	inputCh       chan model.ClientMessage
 }
 
-func (s *wsSession) SendActions(actions []model.DrawAction, rawText string) error {
-	resp := model.ServerResponse{
-		Actions: actions,
-		RawText: rawText,
-	}
+func (s *wsSession) SendServerResponse(resp model.ServerResponse, rawText string) error {
+	resp.RawText = rawText
 	bytes, err := json.Marshal(resp)
 	if err != nil {
 		return err
@@ -131,13 +129,27 @@ func (h *WebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	var chatHistory []string
 
 	session := &wsSession{
 		conn:          conn,
 		writeMu:       &sync.Mutex{},
 		observationCh: make(chan ObservationResponse, 1),
+		inputCh:       make(chan model.ClientMessage, 20),
 	}
+
+	// Task Processor Goroutine
+	// Ensures sequential processing of user inputs without blocking the Read loop
+	go func() {
+		var chatHistory []string
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case clientMsg := <-session.inputCh:
+				chatHistory = h.engine.ProcessInput(ctx, session, clientMsg, chatHistory)
+			}
+		}
+	}()
 
 	for {
 		_, messageBytes, err := conn.ReadMessage()
@@ -169,7 +181,12 @@ func (h *WebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		slog.Info("Received message", "text", clientMsg.Text, "state_len", len(clientMsg.CanvasState))
 
-		// Hand off to the Engine
-		chatHistory = h.engine.ProcessInput(ctx, session, clientMsg, chatHistory)
+		// Enqueue the task instead of blocking the read loop
+		select {
+		case session.inputCh <- clientMsg:
+		default:
+			slog.Warn("Client input channel full, dropping message")
+			session.SendError("系统繁忙，请稍后再试")
+		}
 	}
 }
