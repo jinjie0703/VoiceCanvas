@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import styles from "./AudioVisualizer.module.css";
 
 interface AudioVisualizerProps {
   isActive: boolean;
@@ -22,7 +23,7 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ isActive, isTh
 
   return (
     <div className="h-12.5 flex items-center justify-center my-2">
-      <div className={`siri-wave flex items-center gap-1 h-full ${isActive ? 'active' : ''} ${isThinking ? 'thinking' : ''}`}>
+      <div className={`${styles['siri-wave']} flex items-center gap-1 h-full ${isActive ? styles.active : ''} ${isThinking ? styles.thinking : ''}`}>
         {Array.from({ length: 15 }).map((_, i) => {
           // Add a symmetric height modifier to make it look like a real wave (taller in the middle)
           const distanceToCenter = Math.abs(i - 7);

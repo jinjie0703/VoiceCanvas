@@ -1,4 +1,5 @@
 import React from 'react';
+import styles from "./DebugLogs.module.css";
 import { Button, Card, Empty, List, Typography } from 'antd';
 import { DeleteOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 
@@ -16,17 +17,17 @@ export const DebugLogs: React.FC = () => {
     const highlighted = jsonString.replace(
       /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(?=\s*:))|("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*")|(\b(true|false|null)\b)|(\b[0-9]+\b)/g,
       (match) => {
-        let cls = 'debug-json-number';
+        let cls = styles['debug-json-number'];
         if (/^"/.test(match)) {
           if (/:$/.test(match)) {
-            cls = 'debug-json-key';
+            cls = styles['debug-json-key'];
           } else {
-            cls = 'debug-json-string';
+            cls = styles['debug-json-string'];
           }
         } else if (/true|false/.test(match)) {
-          cls = 'debug-json-boolean';
+          cls = styles['debug-json-boolean'];
         } else if (/null/.test(match)) {
-          cls = 'debug-json-null';
+          cls = styles['debug-json-null'];
         }
         return `<span class="${cls}">${match}</span>`;
       }
