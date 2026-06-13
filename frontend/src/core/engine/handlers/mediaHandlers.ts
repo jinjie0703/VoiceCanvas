@@ -1,8 +1,8 @@
 import { toRichText, createShapeId, AssetRecordType } from "tldraw";
-import type { TLShapePartial } from "tldraw";
 import type { ActionHandler } from "../ActionEngine";
 import { resolveActionCoords } from "../../../utils/coords";
-import { filterValidProps } from "../../../utils/tldrawInterceptor";
+import { filterValidProps, executeWithInterceptor, executeUpdateWithInterceptor } from "../../../utils/tldrawInterceptor";
+import { sanitizeNumber } from "../../../utils/sanitizers";
 
 /**
  * 处理 create_svg 指令：将 SVG 代码作为图片资源嵌入画布。
@@ -14,8 +14,8 @@ export const handleCreateSvg: ActionHandler = (action, { editor, canvasW, canvas
 
   const { x, y } = resolveActionCoords(action, canvasW, canvasH);
 
-  const w = (action.props?.w as number) || 300;
-  const h = (action.props?.h as number) || 300;
+  const w = sanitizeNumber(action.props?.w, 300);
+  const h = sanitizeNumber(action.props?.h, 300);
   const svgDataUrl = "data:image/svg+xml;utf8," + encodeURIComponent(svgCode);
   const assetId = AssetRecordType.createId();
 
@@ -43,7 +43,7 @@ export const handleCreateSvg: ActionHandler = (action, { editor, canvasW, canvas
     props: { w, h, assetId },
   };
   if (action.target_id) newImgShape.id = action.target_id;
-  editor.createShape(newImgShape as TLShapePartial);
+  executeWithInterceptor(editor, newImgShape);
 };
 
 /**
@@ -57,13 +57,13 @@ export const handleCreateImage: ActionHandler = (action, { editor, canvasW, canv
 
   const { x, y } = resolveActionCoords(action, canvasW, canvasH);
 
-  const w = (action.props?.w as number) || 400;
-  const h = (action.props?.h as number) || 400;
+  const w = sanitizeNumber(action.props?.w, 400);
+  const h = sanitizeNumber(action.props?.h, 400);
 
   const assetId = AssetRecordType.createId();
   const placeholderId = createShapeId();
   
-  editor.createShape({
+  executeWithInterceptor(editor, {
     id: placeholderId,
     type: "note",
     x,
@@ -72,12 +72,35 @@ export const handleCreateImage: ActionHandler = (action, { editor, canvasW, canv
       color: "light-blue",
       richText: toRichText("⏳ 正在调用大模型生成图片，可能需要 10-20 秒，请稍候..."),
     }),
-  } as TLShapePartial);
+  });
 
   return new Promise<void>((resolve) => {
+    let isResolved = false;
+    const finish = () => {
+      if (isResolved) return;
+      isResolved = true;
+      resolve();
+    };
+
+    const timeoutId = setTimeout(() => {
+      if (isResolved) return;
+      console.warn("Image loading timed out after 30s");
+      executeUpdateWithInterceptor(editor, {
+        id: placeholderId,
+        type: "note",
+        props: filterValidProps(editor, "note", {
+          color: "light-red",
+          richText: toRichText("❌ 图片加载超时，请检查网络连接。"),
+        }),
+      });
+      finish();
+    }, 30000);
+
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
+      if (isResolved) return;
+      clearTimeout(timeoutId);
       editor.createAssets([
         {
           id: assetId,
@@ -103,21 +126,23 @@ export const handleCreateImage: ActionHandler = (action, { editor, canvasW, canv
       };
       if (action.target_id) newImgShape.id = action.target_id;
       
-      editor.createShape(newImgShape as TLShapePartial);
+      executeWithInterceptor(editor, newImgShape);
       editor.deleteShape(placeholderId);
-      resolve();
+      finish();
     };
     img.onerror = (err) => {
+      if (isResolved) return;
+      clearTimeout(timeoutId);
       console.error("Failed to load AI image:", err);
-      editor.updateShape({
+      executeUpdateWithInterceptor(editor, {
         id: placeholderId,
         type: "note",
         props: filterValidProps(editor, "note", {
           color: "light-red",
           richText: toRichText("❌ 图片生成失败，可能是网络跨域拦截或接口超时。"),
         }),
-      } as TLShapePartial);
-      resolve(); // 即使失败也 resolve，不阻塞后续 action
+      });
+      finish(); // 即使失败也 resolve，不阻塞后续 action
     };
     img.src = url;
   });

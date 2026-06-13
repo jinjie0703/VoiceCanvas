@@ -23,7 +23,8 @@ export const handleNativeTldrawShape: ActionHandler = (action, { editor }) => {
 
 /** 处理 group_shapes 指令：将多个 shape 编为一组。 */
 export const handleGroupShapes: ActionHandler = (action, { editor }) => {
-  const targetIds = ((action.props?.target_ids as string[]) || []).map((id) => id as TLShapeId);
+  const rawIds = Array.isArray(action.props?.target_ids) ? action.props.target_ids : [];
+  const targetIds = rawIds.map((id) => id as TLShapeId);
   if (targetIds.length > 0) {
     editor.groupShapes(targetIds);
   }
@@ -31,6 +32,7 @@ export const handleGroupShapes: ActionHandler = (action, { editor }) => {
 
 /** 处理 select_shapes 指令：选中指定的多个 shape。 */
 export const handleSelectShapes: ActionHandler = (action, { editor }) => {
-  const targetIds = ((action.props?.target_ids as string[]) || []).map((id) => id as TLShapeId);
+  const rawIds = Array.isArray(action.props?.target_ids) ? action.props.target_ids : [];
+  const targetIds = rawIds.map((id) => id as TLShapeId);
   editor.select(...targetIds);
 };

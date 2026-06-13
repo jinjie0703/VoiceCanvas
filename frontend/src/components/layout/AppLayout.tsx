@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { Button, ConfigProvider, theme, Tooltip } from "antd";
+import { Button, ConfigProvider, theme, Tooltip, message } from "antd";
 import {
   SettingOutlined,
   HistoryOutlined,
@@ -15,7 +15,7 @@ import { DebugLogs } from "../panels/DebugLogs";
 import { HelpPanel } from "../panels/HelpPanel";
 import { Whiteboard } from "../canvas/Whiteboard";
 import type { WhiteboardRef } from "../canvas/Whiteboard";
-import type { DebugLog, ServerResponse } from "../../types";
+import type { DebugLog, ServerResponse, CanvasElement } from "../../types";
 import { useAppStore } from "../../store/useAppStore";
 import { ErrorBoundary } from "./ErrorBoundary";
 
@@ -62,6 +62,9 @@ export default function AppLayout() {
   const messageQueue = useRef<string[]>([]);
   const isProcessing = useRef<boolean>(false);
   const executionErrorsRef = useRef<string[]>([]);
+  const sendRequestRef = useRef<
+    ((text: string, canvasState: CanvasElement[], error?: string, base64Image?: string) => boolean) | null
+  >(null);
 
   const processNextMessage = async () => {
     if (isProcessing.current || messageQueue.current.length === 0) {
@@ -80,7 +83,7 @@ export default function AppLayout() {
       base64Image = await whiteboardRef.current.exportSnapshotAsBase64();
     }
 
-    const success = sendRequest(
+    const success = sendRequestRef.current?.(
       nextText,
       canvasSnapshot,
       undefined,
@@ -89,10 +92,18 @@ export default function AppLayout() {
     if (success) {
       setStatusText("🧠 凝音成形...");
     } else {
-      setStatusText("服务器断开连接");
+      setStatusText("重连中，请求已缓存...");
+      messageQueue.current.unshift(nextText);
       isProcessing.current = false;
     }
   };
+
+  useEffect(() => {
+    if (wsStatus === "connected" && messageQueue.current.length > 0) {
+      processNextMessage();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wsStatus]);
 
   const handleServerMessage = async (response: ServerResponse) => {
     // Intercept agent's internal request for canvas state observation
@@ -103,6 +114,15 @@ export default function AppLayout() {
         executionErrorsRef.current.length > 0
           ? executionErrorsRef.current.join("; ")
           : undefined;
+          
+      if (errorMsg) {
+        message.warning({
+          content: "捕捉到格式异常，系统已启动自动修复",
+          key: "self-healing-toast", // Prevent duplicate toasts
+          duration: 3,
+        });
+      }
+      
       sendRequest("__observation__", canvasSnapshot, errorMsg);
       executionErrorsRef.current = []; // Clear after sending
       return;
@@ -151,6 +171,10 @@ export default function AppLayout() {
   const { sendRequest } = useWebSocket({
     onMessage: handleServerMessage,
   });
+  
+  useEffect(() => {
+    sendRequestRef.current = sendRequest;
+  }, [sendRequest]);
 
   const handleVoiceResult = (text: string) => {
     setTranscript(`语音输入: "${text}"`);
@@ -363,7 +387,7 @@ export default function AppLayout() {
         </div>
       </div>
 
-      <HelpPanel />
+        <HelpPanel />
     </ConfigProvider>
   );
 }

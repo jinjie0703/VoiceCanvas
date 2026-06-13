@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import type { ServerResponse, CanvasElement } from '../../types';
+import type { CanvasElement, ServerResponse } from '../../types';
+import { ServerResponseSchema } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 
 interface UseWebSocketProps {
@@ -16,12 +17,14 @@ export function useWebSocket({ onMessage }: UseWebSocketProps) {
   });
 
   useEffect(() => {
-    const socketUrl = `ws://${window.location.hostname}:8080/ws`;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const socketUrl = `${protocol}//${window.location.host}/ws`;
     let socket: WebSocket;
     let reconnectAttempts = 0;
     const MAX_RECONNECT_DELAY = 10000; // max 10 seconds
     const BASE_DELAY = 1000; // start with 1s
     let reconnectTimeout: ReturnType<typeof setTimeout>;
+    let heartbeatInterval: ReturnType<typeof setInterval>;
     let isComponentMounted = true;
 
     function connect() {
@@ -33,10 +36,18 @@ export function useWebSocket({ onMessage }: UseWebSocketProps) {
         setWsStatus('connected');
         reconnectAttempts = 0; // reset on successful connection
         console.log('Connected to WebSocket server');
+        
+        // Start Heartbeat
+        heartbeatInterval = setInterval(() => {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ text: "__ping__" }));
+          }
+        }, 30000); // Send ping every 30 seconds
       };
 
       socket.onclose = () => {
         setWsStatus('disconnected');
+        clearInterval(heartbeatInterval);
         if (!isComponentMounted) return;
 
         // Exponential backoff with jitter
@@ -56,8 +67,13 @@ export function useWebSocket({ onMessage }: UseWebSocketProps) {
 
       socket.onmessage = (event) => {
         try {
-          const response: ServerResponse = JSON.parse(event.data);
-          onMessageRef.current(response);
+          const rawData = JSON.parse(event.data);
+          const result = ServerResponseSchema.safeParse(rawData);
+          if (!result.success) {
+            console.warn('Zod validation failed, dropping malformed server response:', result.error);
+            return;
+          }
+          onMessageRef.current(result.data);
         } catch (e) {
           console.error('Failed to parse server response:', e);
         }
@@ -71,6 +87,7 @@ export function useWebSocket({ onMessage }: UseWebSocketProps) {
     return () => {
       isComponentMounted = false;
       clearTimeout(reconnectTimeout);
+      clearInterval(heartbeatInterval);
       if (socket) socket.close();
     };
   }, [setWsStatus]);
