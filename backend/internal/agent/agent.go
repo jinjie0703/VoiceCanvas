@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 
 	"voice-canvas-backend/internal/model"
 	"voice-canvas-backend/internal/prompts"
@@ -76,7 +77,7 @@ func NewAgent(ctx context.Context, cfg Config) (*Agent, error) {
 // canvasState: the current state of the canvas.
 // onAction: callback to send actions to the frontend for execution.
 // observe: callback to retrieve updated canvas state after actions are executed.
-func (a *Agent) Run(ctx context.Context, enhancedPrompt string, canvasState []model.CanvasElement, base64Image string, onAction OnActionCallback, observe ObservationFunc) {
+func (a *Agent) Run(ctx context.Context, enhancedPrompt string, globalConstraints string, canvasState []model.CanvasElement, base64Image string, onAction OnActionCallback, observe ObservationFunc) {
 	// 1. Retrieve relevant TLDraw API documentation
 	ragContext := ""
 	if a.retriever != nil {
@@ -84,7 +85,7 @@ func (a *Agent) Run(ctx context.Context, enhancedPrompt string, canvasState []mo
 	}
 
 	// 2. Build system prompt with RAG context
-	systemPrompt := a.buildSystemPrompt(ragContext, a.maxRounds)
+	systemPrompt := a.buildSystemPrompt(ragContext, a.maxRounds, globalConstraints)
 
 	// 3. Initialize conversation history
 	stateJSON, _ := json.Marshal(canvasState)
@@ -114,6 +115,8 @@ func (a *Agent) Run(ctx context.Context, enhancedPrompt string, canvasState []mo
 		userMsg,
 	}
 
+	var currentPlan []string
+
 	// 4. ReAct Loop
 	for round := 0; round < a.maxRounds; round++ {
 		slog.Info("Agent round", "round", round+1, "max", a.maxRounds)
@@ -129,10 +132,7 @@ func (a *Agent) Run(ctx context.Context, enhancedPrompt string, canvasState []mo
 		var allActions []model.DrawAction
 		isDone := false
 
-		var inString bool
-		var escape bool
-		var braceCount int
-		var jsonBuffer string
+		var buffer string
 
 		for {
 			chunk, err := stream.Recv()
@@ -147,57 +147,57 @@ func (a *Agent) Run(ctx context.Context, enhancedPrompt string, canvasState []mo
 			if chunk != nil {
 				for _, ch := range chunk.Content {
 					fullContent += string(ch)
+					buffer += string(ch)
+				}
+			}
 
-					if braceCount == 0 && ch == '{' {
-						jsonBuffer = "{"
-						braceCount = 1
-						continue
+			// Robust JSON stream parsing
+			for {
+				idx := strings.Index(buffer, "{")
+				if idx == -1 {
+					buffer = "" // No start of object found, discard buffer
+					break
+				}
+
+				// Discard anything before the first '{'
+				buffer = buffer[idx:]
+
+				dec := json.NewDecoder(strings.NewReader(buffer))
+				var rawMsg json.RawMessage
+				err := dec.Decode(&rawMsg)
+				if err != nil {
+					// Check if it's incomplete
+					if strings.Contains(err.Error(), "EOF") || strings.Contains(err.Error(), "unexpected end of JSON input") {
+						break // Wait for more data
 					}
+					// Invalid JSON, skip this '{'
+					buffer = buffer[1:]
+					continue
+				}
 
-					if braceCount > 0 {
-						jsonBuffer += string(ch)
-						if escape {
-							escape = false
-							continue
+				// Parse successful
+				var doneCheck struct {
+					Status string `json:"status"`
+				}
+				if err := json.Unmarshal(rawMsg, &doneCheck); err == nil && doneCheck.Status == "done" {
+					isDone = true
+				} else {
+					var resp model.ServerResponse
+					if err := json.Unmarshal(rawMsg, &resp); err == nil {
+						if len(resp.StepByStepPlan) > 0 {
+							currentPlan = resp.StepByStepPlan
 						}
-						if ch == '\\' {
-							escape = true
-							continue
-						}
-						if ch == '"' {
-							inString = !inString
-							continue
-						}
-						if !inString {
-							if ch == '{' {
-								braceCount++
-							} else if ch == '}' {
-								braceCount--
-								if braceCount == 0 {
-									// Parse the completed JSON object
-									var doneCheck struct {
-										Status string `json:"status"`
-									}
-									if err := json.Unmarshal([]byte(jsonBuffer), &doneCheck); err == nil && doneCheck.Status == "done" {
-										isDone = true
-									} else {
-										var resp model.ServerResponse
-										if err := json.Unmarshal([]byte(jsonBuffer), &resp); err == nil {
-											hasContent := len(resp.Actions) > 0 || resp.VoiceReply != "" || resp.Feedback != "" || resp.TaskAnalysis != ""
-											if hasContent {
-												if len(resp.Actions) > 0 {
-													allActions = append(allActions, resp.Actions...)
-												}
-												onAction(resp)
-											}
-										}
-									}
-									jsonBuffer = "" // Reset for next object
-								}
+						hasContent := len(resp.Actions) > 0 || resp.VoiceReply != "" || resp.Feedback != "" || resp.TaskAnalysis != ""
+						if hasContent {
+							if len(resp.Actions) > 0 {
+								allActions = append(allActions, resp.Actions...)
 							}
+							onAction(resp)
 						}
 					}
 				}
+
+				buffer = buffer[int(dec.InputOffset()):]
 			}
 		}
 
@@ -226,6 +226,11 @@ func (a *Agent) Run(ctx context.Context, enhancedPrompt string, canvasState []mo
 					systemWarning = fmt.Sprintf("\n[CRITICAL SYSTEM WARNING] You ONLY have %d interaction(s) remaining! You MUST finish the current task and ensure you return `{\"status\": \"done\"}` before you are cut off.", remaining)
 				} else {
 					systemWarning = fmt.Sprintf("\n[System Info] You have %d interaction(s) remaining. If the current canvas already meets the user's requirement, YOU MUST STOP NOW by responding ONLY with `{\"status\": \"done\"}`.", remaining)
+				}
+
+				if len(currentPlan) > 0 {
+					planJSON, _ := json.Marshal(currentPlan)
+					systemWarning += fmt.Sprintf("\n[Task Plan Tracker] 你的初始任务计划是: %s。请基于当前画布状态，严格遵循该计划执行下一步！不要遗忘计划！", string(planJSON))
 				}
 
 				observation := fmt.Sprintf("Actions executed successfully. Updated canvas state (%d shapes): %s%s", len(newState), string(newStateJSON), systemWarning)
@@ -262,8 +267,12 @@ func (a *Agent) retrieveContext(ctx context.Context, query string) string {
 }
 
 // buildSystemPrompt constructs the full system prompt with RAG context injected.
-func (a *Agent) buildSystemPrompt(ragContext string, maxRounds int) string {
+func (a *Agent) buildSystemPrompt(ragContext string, maxRounds int, globalConstraints string) string {
 	base := prompts.SystemPrompt
+
+	if globalConstraints != "" {
+		base += "\n\n### 全局绘图约束 (最高优先级)\n以下是基于过去对话提纯出的全局长效约束，你必须在本次绘图中严格遵循这些限制与偏好：\n" + globalConstraints
+	}
 
 	if ragContext != "" {
 		base += "\n\n### TLDraw API 参考文档 (由 RAG 检索)\n以下是与当前任务最相关的 TLDraw SDK 文档片段。你可以参考这些 API 来执行更丰富的操作：\n\n" + ragContext

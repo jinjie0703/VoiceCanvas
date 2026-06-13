@@ -35,13 +35,14 @@ func NewEnhancer(cfg *config.Config) *Enhancer {
 }
 
 type EnhancementResult struct {
-	IsValid        bool   `json:"is_valid"`
-	FeedbackMsg    string `json:"feedback_msg"`
-	EnhancedPrompt string `json:"enhanced_prompt"`
+	IsValid           bool   `json:"is_valid"`
+	FeedbackMsg       string `json:"feedback_msg"`
+	EnhancedPrompt    string `json:"enhanced_prompt"`
+	GlobalConstraints string `json:"global_constraints"`
 }
 
 // Enhance processes the raw input, canvas state, and chat history, returning the refined JSON result.
-func (e *Enhancer) Enhance(ctx context.Context, text string, state []model.CanvasElement, history []string) (*EnhancementResult, error) {
+func (e *Enhancer) Enhance(ctx context.Context, text string, state []model.CanvasElement, history []string, currentConstraints string) (*EnhancementResult, error) {
 	stateJSON, err := json.Marshal(state)
 	if err != nil {
 		stateJSON = []byte("[]")
@@ -52,7 +53,7 @@ func (e *Enhancer) Enhance(ctx context.Context, text string, state []model.Canva
 		historyJSON = []byte("[]")
 	}
 
-	userMsg := "recent_history: " + string(historyJSON) + "\nraw_input: \"" + text + "\"\ncanvas_summary: " + string(stateJSON)
+	userMsg := "recent_history: " + string(historyJSON) + "\nraw_input: \"" + text + "\"\ncanvas_summary: " + string(stateJSON) + "\ncurrent_global_constraints: \"" + currentConstraints + "\""
 
 	messages := []openai.ChatCompletionMessage{
 		{
