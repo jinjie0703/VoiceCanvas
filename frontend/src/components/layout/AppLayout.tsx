@@ -32,6 +32,7 @@ export default function AppLayout() {
   );
   const isEditMode = useAppStore((state) => state.isEditMode);
   const setIsEditMode = useAppStore((state) => state.setIsEditMode);
+  const wsStatus = useAppStore((state) => state.wsStatus);
 
   // 用户微调区：TLDraw 左下角 Tag 的展开状态（可随时通过代码微调高度）
   const [isTagExpanded, setIsTagExpanded] = useState(false);
@@ -286,9 +287,18 @@ export default function AppLayout() {
           )}
 
           <div
-            className="absolute top-4 z-50 flex gap-3 transition-all duration-300 ease-in-out"
+            className="absolute top-4 z-50 flex items-center gap-3 transition-all duration-300 ease-in-out"
             style={{ right: isEditMode ? "174px" : "16px" }}
           >
+            {/* System Status Indicator */}
+            {!leftPanelVisible && (
+              <Tooltip title={wsStatus === "connected" ? "系统已连接" : "系统已断开"} placement="bottom">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white border border-slate-200 shadow-sm cursor-help hover:bg-slate-50 transition-colors">
+                  <div className={`w-2.5 h-2.5 rounded-full ${wsStatus === "connected" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]"}`} />
+                </div>
+              </Tooltip>
+            )}
+
             <Tooltip
               title={isEditMode ? "退出手动编辑" : "开启白板工具栏"}
               placement="bottomRight"
