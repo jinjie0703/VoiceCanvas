@@ -48,9 +48,8 @@ export const HelpPanel: React.FC = () => {
             : "opacity-0 scale-95 pointer-events-none"
         }`}
       >
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-slate-200/50 shrink-0">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-slate-200/50 shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-[#3182ed]/10 flex items-center justify-center text-[#3182ed]">
                 <BulbOutlined style={{ fontSize: 16 }} />
@@ -77,7 +76,7 @@ export const HelpPanel: React.FC = () => {
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden p-5">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-5 custom-scrollbar">
             {/* Category 1: Multimedia */}
             <div className="mb-6">
               <Text className="text-xs font-bold text-violet-500 mb-3 block uppercase tracking-wider">
@@ -189,7 +188,6 @@ export const HelpPanel: React.FC = () => {
                 秒，请耐心等待画布加载。
               </Text>
             </div>
-          </div>
         </div>
       </div>
 
