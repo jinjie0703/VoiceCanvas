@@ -16,7 +16,7 @@ export function generateTextStream(
   // Actually, we should just use /api/optimize so that Vite proxy can proxy it or fallback to localhost:8080.
   // Assuming there is a vite proxy for /api)
   const eventSource = new EventSource(
-    `http://localhost:8080/api/optimize?prompt=${encodeURIComponent(theme)}`,
+    `http://${window.location.hostname}:8080/api/optimize?prompt=${encodeURIComponent(theme)}`,
   );
 
   eventSource.onmessage = (event) => {
