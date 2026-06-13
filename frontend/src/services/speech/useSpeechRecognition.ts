@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from 'react';
 interface UseSpeechRecognitionProps {
   onResult: (text: string) => void;
   onListeningStateChange?: (isRecording: boolean) => void;
+  wakeWordRegex?: RegExp;
+  sleepWordRegex?: RegExp;
 }
 
 interface ISpeechRecognition {
@@ -22,7 +24,12 @@ interface WindowWithSpeech extends Window {
   webkitSpeechRecognition?: { new (): ISpeechRecognition };
 }
 
-export function useSpeechRecognition({ onResult, onListeningStateChange }: UseSpeechRecognitionProps) {
+export function useSpeechRecognition({ 
+  onResult, 
+  onListeningStateChange,
+  wakeWordRegex = /(hi|嗨|hai|海)[\s,，]*(canvas|画板|画布)(.*)/i,
+  sleepWordRegex = /(关闭|退出|休息)[\s,，]*(canvas|画板|画布)?/i,
+}: UseSpeechRecognitionProps) {
   const [isSupported] = useState(() => {
     if (typeof window === 'undefined') return false;
     const win = window as unknown as WindowWithSpeech;
@@ -90,17 +97,17 @@ export function useSpeechRecognition({ onResult, onListeningStateChange }: UseSp
 
         if (!isAwakeRef.current) {
           // Listen for wake word
-          const match = text.match(/(hi|嗨|hai|海)[\s,，]*(canvas|画板|画布)(.*)/i);
+          const match = text.match(wakeWordRegex);
           if (match) {
             setIsAwake(true);
-            const command = match[3].trim();
+            const command = match[3] ? match[3].trim() : text.replace(wakeWordRegex, "").trim();
             if (command) {
               onResultRef.current(command);
             }
           }
         } else {
           // Listen for sleep word or standard command
-          const sleepMatch = text.match(/(关闭|退出|休息)[\s,，]*(canvas|画板|画布)?/i);
+          const sleepMatch = text.match(sleepWordRegex);
           if (sleepMatch) {
             setIsAwake(false);
             return;
