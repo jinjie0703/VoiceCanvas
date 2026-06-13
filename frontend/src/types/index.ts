@@ -1,9 +1,39 @@
+/**
+ * 合法的 AI 绘制指令类型。
+ * 与 ActionEngine handler 注册表严格对齐，新增指令时须同步更新。
+ */
+export type DrawCommand =
+  | "create_shape"
+  | "modify_shape"
+  | "delete_shape"
+  | "align_shapes"
+  | "layer_shape"
+  | "create_svg"
+  | "create_image"
+  | "create_connection"
+  | "clear_canvas"
+  | "native_tldraw_shape"
+  | "group_shapes"
+  | "select_shapes";
+
+/** 九宫格语义方位（含 top_center / bottom_center） */
+export type SemanticPosition =
+  | "top_left"
+  | "top_center"
+  | "top_right"
+  | "center_left"
+  | "center"
+  | "center_right"
+  | "bottom_left"
+  | "bottom_center"
+  | "bottom_right";
+
 export interface CanvasElement {
   id: string;
   type: string;
   geo?: string;
   color: string;
-  position: string;
+  position: SemanticPosition;
   x?: number;
   y?: number;
   w?: number;
@@ -12,7 +42,7 @@ export interface CanvasElement {
 }
 
 export interface DrawAction {
-  command: string;
+  command: DrawCommand;
   type?: string;
   target_id?: string;
   props?: Record<string, unknown>;

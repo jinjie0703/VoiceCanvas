@@ -1,46 +1,36 @@
+import { VALID_TLDRAW_COLORS, VALID_TLDRAW_GEOS } from "./constants";
+
+/**
+ * 校验并修正颜色值，确保符合 TLDraw 枚举。
+ * 自动将 LLM 常见幻觉（如 "gray"→"grey"）映射为合法值。
+ *
+ * @param color - 待校验的颜色值（来自 LLM 输出）
+ * @param defaultColor - 校验失败时的回退颜色
+ * @returns 合法的 TLDraw 颜色字符串
+ */
 export const sanitizeColor = (color: unknown, defaultColor: string): string => {
   if (!color || typeof color !== "string") return defaultColor;
   const lowerColor = color.toLowerCase();
   if (lowerColor === "gray") return "grey";
 
-  const validColors = [
-    "black",
-    "grey",
-    "light-violet",
-    "violet",
-    "blue",
-    "light-blue",
-    "yellow",
-    "orange",
-    "green",
-    "light-green",
-    "light-red",
-    "red",
-    "white",
-  ];
-  if (validColors.includes(lowerColor)) return lowerColor;
+  if (VALID_TLDRAW_COLORS.has(lowerColor)) return lowerColor;
   return defaultColor;
 };
 
+/**
+ * 校验并修正几何形状类型，确保符合 TLDraw 枚举。
+ * 自动将 LLM 常见幻觉（如 "circle"→"ellipse"、"square"→"rectangle"）映射为合法值。
+ *
+ * @param geo - 待校验的形状类型（来自 LLM 输出）
+ * @param defaultGeo - 校验失败时的回退形状
+ * @returns 合法的 TLDraw geo 字符串
+ */
 export const sanitizeGeo = (geo: unknown, defaultGeo: string): string => {
   if (!geo || typeof geo !== "string") return defaultGeo;
   const lowerGeo = geo.toLowerCase();
   if (lowerGeo === "circle") return "ellipse";
   if (lowerGeo === "square") return "rectangle";
 
-  const validGeos = [
-    "rectangle",
-    "ellipse",
-    "triangle",
-    "diamond",
-    "pentagon",
-    "hexagon",
-    "octagon",
-    "star",
-    "rhombus",
-    "oval",
-    "cloud",
-  ];
-  if (validGeos.includes(lowerGeo)) return lowerGeo;
+  if (VALID_TLDRAW_GEOS.has(lowerGeo)) return lowerGeo;
   return defaultGeo;
 };

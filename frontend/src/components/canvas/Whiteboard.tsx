@@ -16,7 +16,7 @@ interface WhiteboardProps {
 
 export interface WhiteboardRef {
   getCanvasStateSnapshot: () => CanvasElement[];
-  executeActions: (actions: DrawAction[]) => string[];
+  executeActions: (actions: DrawAction[]) => Promise<string[]>;
   exportSnapshotAsBase64: () => Promise<string | undefined>;
   undo: () => void;
   redo: () => void;
@@ -30,8 +30,9 @@ export const Whiteboard = React.memo(
       if (!editorRef.current) return [];
 
       const shapes = editorRef.current.getCurrentPageShapes();
-      const canvasW = window.innerWidth;
-      const canvasH = window.innerHeight;
+      const viewport = editorRef.current.getViewportScreenBounds();
+      const canvasW = viewport.w;
+      const canvasH = viewport.h;
 
       return shapes.map((s) => {
         const props = s.props as {
@@ -61,14 +62,14 @@ export const Whiteboard = React.memo(
       });
     };
 
-    const executeActions = (actions: DrawAction[]): string[] => {
+    const executeActions = async (actions: DrawAction[]): Promise<string[]> => {
       const editor = editorRef.current;
       if (!editor) return [];
 
-      const canvasW = window.innerWidth;
-      const canvasH = window.innerHeight;
+      const viewport = editor.getViewportScreenBounds();
+      const canvasW = viewport.w;
+      const canvasH = viewport.h;
 
-      // Wrap the streamed chunks so TLDraw records them correctly in the history stack
       return executeActionEngine(actions, { editor, canvasW, canvasH });
     };
 
