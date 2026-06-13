@@ -22,6 +22,7 @@ import {
 import { useAppStore } from "../../store/useAppStore";
 import { generateTextStream } from "../../api/ai";
 import { useSpeechRecognition } from "../../services/speech/useSpeechRecognition";
+import { AudioVisualizer } from "./AudioVisualizer";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -190,17 +191,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             </Card>
           </div>
 
-          <div className="voice-wave-container">
-            <div
-              className={`sound-wave ${isRecording ? "active" : statusText.includes("思考") ? "thinking" : ""}`}
-            >
-              <span className="bg-slate-300" />
-              <span className="bg-slate-300" />
-              <span className="bg-slate-300" />
-              <span className="bg-slate-300" />
-              <span className="bg-slate-300" />
-            </div>
-          </div>
+          <AudioVisualizer 
+            isActive={isRecording} 
+            isThinking={statusText.includes("思考")} 
+          />
         </div>
       </div>
 
