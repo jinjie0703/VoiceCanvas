@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Button, ConfigProvider, theme, Tooltip } from "antd";
 import {
   SettingOutlined,
@@ -23,13 +23,36 @@ export default function AppLayout() {
   const setStatusText = useAppStore((state) => state.setStatusText);
   const setTranscript = useAppStore((state) => state.setTranscript);
   const addDebugLog = useAppStore((state) => state.addDebugLog);
-  
+
   const leftPanelVisible = useAppStore((state) => state.leftPanelVisible);
   const setLeftPanelVisible = useAppStore((state) => state.setLeftPanelVisible);
   const rightPanelVisible = useAppStore((state) => state.rightPanelVisible);
-  const setRightPanelVisible = useAppStore((state) => state.setRightPanelVisible);
+  const setRightPanelVisible = useAppStore(
+    (state) => state.setRightPanelVisible,
+  );
   const isEditMode = useAppStore((state) => state.isEditMode);
   const setIsEditMode = useAppStore((state) => state.setIsEditMode);
+
+  // 用户微调区：TLDraw 左下角 Tag 的展开状态（可随时通过代码微调高度）
+  const [isTagExpanded, setIsTagExpanded] = useState(false);
+  const BOTTOM_IDLE = "16px"; // 非编辑模式（全收起）
+  const BOTTOM_EDIT_COLLAPSED = "56px"; // 编辑模式（Tag 未展开）
+  const BOTTOM_EDIT_EXPANDED = "152px"; // 编辑模式（Tag 已展开）
+
+  // 自动侦听 TLDraw 的原生 DOM，以精确捕获 Tag 展开状态
+  useEffect(() => {
+    if (!isEditMode) return;
+
+    const timer = setInterval(() => {
+      // TLDraw 展开 Minimap 时会在 DOM 中挂载特定的 class
+      const hasMinimap =
+        !!document.querySelector(".tlui-minimap") ||
+        !!document.querySelector(".tl-minimap");
+      setIsTagExpanded(hasMinimap);
+    }, 200);
+
+    return () => clearInterval(timer);
+  }, [isEditMode]);
 
   const whiteboardRef = useRef<WhiteboardRef>(null);
   const { speak } = useTTS();
@@ -44,20 +67,26 @@ export default function AppLayout() {
       return;
     }
     isProcessing.current = true;
-    
+
     // Combine all buffered messages into a single prompt context instead of taking just one
     const nextText = messageQueue.current.join("，然后");
     messageQueue.current = []; // Clear the buffer
 
-    const canvasSnapshot = whiteboardRef.current?.getCanvasStateSnapshot() || [];
+    const canvasSnapshot =
+      whiteboardRef.current?.getCanvasStateSnapshot() || [];
     let base64Image: string | undefined;
     if (whiteboardRef.current?.exportSnapshotAsBase64) {
       base64Image = await whiteboardRef.current.exportSnapshotAsBase64();
     }
 
-    const success = sendRequest(nextText, canvasSnapshot, undefined, base64Image);
+    const success = sendRequest(
+      nextText,
+      canvasSnapshot,
+      undefined,
+      base64Image,
+    );
     if (success) {
-      setStatusText("🧠 AI 思考中...");
+      setStatusText("🧠 凝音成形...");
     } else {
       setStatusText("服务器断开连接");
       isProcessing.current = false;
@@ -67,8 +96,12 @@ export default function AppLayout() {
   const handleServerMessage = (response: ServerResponse) => {
     // Intercept agent's internal request for canvas state observation
     if (response.raw_text === "__request_observation__") {
-      const canvasSnapshot = whiteboardRef.current?.getCanvasStateSnapshot() || [];
-      const errorMsg = executionErrorsRef.current.length > 0 ? executionErrorsRef.current.join("; ") : undefined;
+      const canvasSnapshot =
+        whiteboardRef.current?.getCanvasStateSnapshot() || [];
+      const errorMsg =
+        executionErrorsRef.current.length > 0
+          ? executionErrorsRef.current.join("; ")
+          : undefined;
       sendRequest("__observation__", canvasSnapshot, errorMsg);
       executionErrorsRef.current = []; // Clear after sending
       return;
@@ -77,8 +110,8 @@ export default function AppLayout() {
     // Agent interaction is completely done
     if (response.raw_text === "__done__") {
       isProcessing.current = false;
-      setStatusText("AI 执行完毕");
-      setTimeout(() => setStatusText("等待指令"), 2000);
+      setStatusText("✨ 跃然纸上");
+      setTimeout(() => setStatusText("静候回声"), 2000);
       processNextMessage();
       return;
     }
@@ -87,14 +120,15 @@ export default function AppLayout() {
       setStatusText("需要补充信息");
       speak(response.feedback);
     }
-    
+
     if (response.voice_reply) {
       speak(response.voice_reply);
     }
 
     if (response.actions || response.feedback || response.voice_reply) {
       if (response.actions && response.actions.length > 0) {
-        const errors = whiteboardRef.current?.executeActions(response.actions) || [];
+        const errors =
+          whiteboardRef.current?.executeActions(response.actions) || [];
         if (errors.length > 0) {
           executionErrorsRef.current.push(...errors);
         }
@@ -122,12 +156,6 @@ export default function AppLayout() {
     triggerSend(text);
   };
 
-  const handleSpeechStateChange = (recording: boolean) => {
-    if (recording) {
-      setStatusText("正在聆听...");
-    }
-  };
-
   const {
     isRecording,
     isSupported: isSpeechSupported,
@@ -135,7 +163,6 @@ export default function AppLayout() {
     stopRecording,
   } = useSpeechRecognition({
     onResult: handleVoiceResult,
-    onListeningStateChange: handleSpeechStateChange,
   });
 
   const triggerSend = (text: string) => {
@@ -208,38 +235,50 @@ export default function AppLayout() {
 
           {/* Floating Voice Input Button (visible when left panel is collapsed) */}
           {!leftPanelVisible && (
-            <div 
+            <div
               className="absolute z-50 transition-all duration-300 ease-in-out flex flex-col items-center"
-              style={{ left: '24px', bottom: isEditMode ? '80px' : '24px' }}
+              style={{
+                left: "16px",
+                bottom: isEditMode
+                  ? isTagExpanded
+                    ? BOTTOM_EDIT_EXPANDED
+                    : BOTTOM_EDIT_COLLAPSED
+                  : BOTTOM_IDLE,
+              }}
             >
-              <Tooltip title={isRecording ? "点击结束录音" : "点击开始语音输入"} placement="right">
+              <Tooltip
+                title={isRecording ? "点击结束录音" : "点击开始语音输入"}
+                placement="top"
+              >
                 <div className="relative flex items-center justify-center w-16 h-16">
                   <Button
                     type="primary"
                     shape="circle"
-                    icon={<AudioOutlined style={{ fontSize: 24 }} />}
-                    onClick={() => isRecording ? stopRecording() : startRecording()}
+                    icon={
+                      <AudioOutlined
+                        style={{ fontSize: 24 }}
+                        className={isRecording ? "animate-pulse" : ""}
+                      />
+                    }
+                    onClick={() =>
+                      isRecording ? stopRecording() : startRecording()
+                    }
                     style={{
                       width: 64,
                       height: 64,
-                      border: 'none',
-                      transition: 'box-shadow 0.3s ease, transform 0.1s ease',
-                      background: isRecording
-                        ? 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)'
-                        : 'linear-gradient(135deg, #53a0fa 0%, #3182ed 100%)',
-                      boxShadow: isRecording
-                        ? '0 8px 30px rgba(244, 63, 94, 0.4)'
-                        : '0 8px 30px rgba(49, 130, 237, 0.3)',
                     }}
-                    className={`z-10 hover:scale-105 active:scale-95 transition-transform ${isRecording ? 'recording' : ''}`}
+                    className={`z-10 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 border-none! ${
+                      isRecording
+                        ? "bg-rose-500! shadow-md shadow-rose-500/30"
+                        : "bg-[#3182ed]! shadow-md hover:shadow-lg shadow-[#3182ed]/20"
+                    }`}
                   />
-                  {isRecording && <div className="pulse-ring-outer bg-rose-500/15!" style={{ animation: 'pulse-ring-anim 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite' }} />}
                 </div>
               </Tooltip>
-              <div 
-                className={`absolute top-full mt-2 whitespace-nowrap text-rose-500 font-bold text-xs bg-white/90 px-2 py-1 rounded-md shadow-sm backdrop-blur-sm border border-rose-100 transition-all duration-300 ${isRecording ? 'opacity-100 translate-y-0 animate-pulse' : 'opacity-0 -translate-y-2 pointer-events-none'}`}
+              <div
+                className={`absolute left-full ml-4 top-1/2 -translate-y-1/2 whitespace-nowrap text-rose-500 font-bold text-[13px] bg-white/95 px-3 py-1.5 rounded-lg shadow-md backdrop-blur-sm border border-rose-100 transition-all duration-300 ${isRecording ? "opacity-100 translate-x-0 animate-pulse" : "opacity-0 -translate-x-2 pointer-events-none"}`}
               >
-                正在聆听...
+                侧耳倾听...
               </div>
             </div>
           )}

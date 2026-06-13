@@ -3,8 +3,6 @@ import styles from "./ControlPanel.module.css";
 import {
   Badge,
   Button,
-  Card,
-  Divider,
   Form,
   Input,
   Space,
@@ -25,7 +23,7 @@ import { generateTextStream } from "../../api/ai";
 import { useSpeechRecognition } from "../../services/speech/useSpeechRecognition";
 import { AudioVisualizer } from "./AudioVisualizer";
 
-const { Title, Paragraph, Text } = Typography;
+const { Title, Text } = Typography;
 
 interface ControlPanelProps {
   isRecording: boolean;
@@ -87,7 +85,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           setOptimizingBgText("");
           message.error("优化失败，请稍后重试");
         },
-      }
+      },
     );
   };
 
@@ -104,189 +102,211 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   ];
 
   return (
-    <div className="flex flex-col h-full justify-between">
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <Space>
-            <Button
-              type="text"
-              icon={<MenuFoldOutlined />}
-              onClick={onHidePanel}
-              title="收起面板"
-              className="text-slate-600 hover:text-slate-800"
-            />
-            <Title level={4} style={{ margin: 0 }} className="text-slate-800">
-              VoiceCanvas AI
-            </Title>
-          </Space>
-          <Badge
-            status={wsStatus === "connected" ? "success" : "error"}
-            text={
-              <Text
-                className={`${wsStatus === "connected" ? "text-emerald-600" : "text-rose-500"} text-xs font-semibold`}
-              >
-                {wsStatus === "connected" ? "已连接" : "未连接"}
-              </Text>
-            }
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+        <Space>
+          <Button
+            type="text"
+            icon={<MenuFoldOutlined />}
+            onClick={onHidePanel}
+            title="收起面板"
+            className="text-slate-600 hover:text-slate-800"
           />
-        </div>
-        <Paragraph className="text-slate-500 text-xs leading-relaxed mb-6">
-          智能手绘辅助引擎。通过自然语言对话，AI
-          代理将为您实时生成与修改拓扑结构。
-        </Paragraph>
-
-        <div className="flex flex-col items-center gap-6 my-10">
-          <div
-            className={`${styles['mic-button-container']} ${isRecording ? styles.recording : ""}`}
+          <Title
+            level={4}
+            style={{ margin: 0 }}
+            className="font-bold tracking-tight"
           >
-            <Button
-              type="primary"
-              shape="circle"
-              icon={<AudioOutlined style={{ fontSize: 32 }} />}
-              disabled={!isSpeechSupported}
-              onClick={() =>
-                isRecording ? onStopRecording() : onStartRecording()
-              }
-              className={`mic-button z-10 transition-transform duration-200 hover:scale-105 active:scale-95 ${isRecording ? "recording" : ""}`}
-              style={{
-                width: 90,
-                height: 90,
-                border: "none",
-                transition: "box-shadow 0.3s ease",
-                background: isRecording
-                  ? "linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)"
-                  : "linear-gradient(135deg, #53a0fa 0%, #3182ed 100%)",
-                boxShadow: isRecording
-                  ? "0 8px 30px rgba(244, 63, 94, 0.4)"
-                  : "0 8px 30px rgba(49, 130, 237, 0.2)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            />
-            <div className={styles['pulse-ring-outer']} />
-          </div>
-
-          <div className="w-full text-center">
+            <span className="bg-clip-text text-transparent! bg-linear-to-r from-sky-400 via-blue-500 to-indigo-500">
+              VoiceCanvas AI
+            </span>
+          </Title>
+        </Space>
+        <Badge
+          status={wsStatus === "connected" ? "success" : "error"}
+          text={
             <Text
-              strong
-              className={`block text-sm uppercase tracking-wider mb-3 ${
-                isRecording
-                  ? "text-rose-500"
-                  : statusText.includes("🧠")
-                    ? "text-emerald-500 font-bold"
-                    : "text-slate-500"
-              }`}
+              className={`${wsStatus === "connected" ? "text-emerald-600" : "text-rose-500"} text-xs font-semibold`}
             >
-              {isRecording ? "正在聆听中..." : statusText}
+              {wsStatus === "connected" ? "已就绪" : "未连接"}
             </Text>
-
-            <Card
-              variant="outlined"
-              className="bg-slate-50/50 border-slate-100 rounded-xl min-h-17.5 flex items-center justify-center"
-              styles={{ body: { padding: 12, width: "100%" } }}
-            >
-              <Text className="text-slate-700 text-sm font-medium">
-                {transcript}
-              </Text>
-            </Card>
-          </div>
-
-          <AudioVisualizer 
-            isActive={isRecording} 
-            isThinking={statusText.includes("思考")} 
-          />
-        </div>
+          }
+        />
       </div>
 
-      <div>
-        <Divider className="border-slate-100 my-4" />
+      <div className="flex-1 overflow-y-auto mt-4 pr-1.5 flex flex-col justify-between">
+        <div>
+          <div className="text-center mb-5 mt-2">
+            <div className="text-slate-600 text-[13px] font-medium tracking-widest">
+              「 循声而往，化意为形 」
+            </div>
+          </div>
 
-        {/* Sample Commands Quick Click */}
-        <div className="mb-4">
-          <Space className="block mb-2">
-            <Text className="text-xs text-slate-500 font-medium">
-              <InfoCircleOutlined className="mr-1 text-slate-400" /> 推荐尝试：
-            </Text>
-          </Space>
-          <div className="flex flex-col gap-2">
-            {sampleCommands.map((cmd) => (
+          <div className="flex flex-col items-center gap-4 my-2 p-5 bg-linear-to-b from-slate-50/80 to-slate-100/40 backdrop-blur-sm rounded-2xl border border-white/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)] relative overflow-hidden">
+            <div
+              className={`${styles["mic-button-container"]} ${isRecording ? styles.recording : ""} z-10`}
+            >
+              <div className={styles["vc-ripple-ring"]} />
+              <div className={styles["vc-ripple-ring-1"]} />
+              <div className={styles["vc-ripple-ring-2"]} />
               <Button
-                key={cmd}
-                type="text"
-                onClick={() => onSubmitManual(cmd)}
-                className="text-left text-[#3182ed] bg-blue-50/50 hover:bg-blue-100/50 border border-blue-100/50 rounded-lg py-2 px-3 w-full text-xs font-medium h-auto whitespace-normal wrap-break-word leading-relaxed"
+                type="primary"
+                shape="circle"
+                icon={
+                  <AudioOutlined
+                    style={{ fontSize: 24 }}
+                    className={isRecording ? "animate-pulse" : ""}
+                  />
+                }
+                disabled={!isSpeechSupported}
+                onClick={() =>
+                  isRecording ? onStopRecording() : onStartRecording()
+                }
+                style={{
+                  width: 64,
+                  height: 64,
+                }}
+                className={`z-10 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 border-none! ${
+                  isRecording
+                    ? "bg-rose-500! shadow-md shadow-rose-500/30"
+                    : "bg-[#3182ed]! shadow-md hover:shadow-lg shadow-[#3182ed]/20"
+                }`}
+              />
+            </div>
+
+            <AudioVisualizer
+              isActive={isRecording}
+              isThinking={statusText.includes("🧠")}
+            />
+
+            <div className="w-full text-center z-10">
+              <Text
+                strong
+                className={`block text-[11px] uppercase tracking-widest mb-2 ${
+                  isRecording
+                    ? "text-rose-500"
+                    : statusText.includes("🧠")
+                      ? "text-emerald-500 font-bold"
+                      : "text-slate-400"
+                }`}
               >
-                {cmd}
-              </Button>
-            ))}
+                {isRecording ? "侧耳倾听..." : statusText}
+              </Text>
+
+              <div className="bg-white/80 border border-slate-200 rounded-lg py-1.5 px-3 shadow-sm min-h-8 flex items-center justify-center">
+                <Text className="text-slate-600 text-[13px] font-medium line-clamp-2">
+                  {transcript || "✨ 倾听思考的形状..."}
+                </Text>
+              </div>
+            </div>
           </div>
         </div>
 
-        <Form onFinish={handleSubmit} className="w-full">
-          <Form.Item className="mb-0">
-            {/* 模拟一个完整的输入框外观，让操作按钮在视觉上“内含” */}
-            <div className="relative flex flex-col rounded-xl border border-gray-200 hover:border-blue-400 focus-within:border-blue-400 focus-within:shadow-[0_0_0_2px_rgba(5,145,255,0.1)] transition-all bg-white overflow-hidden">
-              {optimizingBgText && (
-                <div className="absolute top-0 left-0 w-full p-3 pb-1 text-sm text-gray-300 whitespace-pre-wrap pointer-events-none select-none z-0">
-                  {optimizingBgText}
-                </div>
-              )}
-              <Input.TextArea
-                value={manualText}
-                onChange={(e) => setManualText(e.target.value)}
-                placeholder={optimizingBgText ? "" : "输入画图指令，例如：绘制一个前后端分离的系统架构图..."}
-                autoSize={{ minRows: 3, maxRows: 5 }}
-                variant="borderless"
-                className="p-3 pb-1 text-sm resize-none focus:ring-0 shadow-none bg-transparent relative z-10"
-                onPressEnter={(e) => {
-                  if (!e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit();
+        <div>
+          {/* Sample Commands Quick Click */}
+          <div className="mb-4 mt-2">
+            <div className="flex items-center mb-3">
+              <Text className="text-xs text-slate-500 font-medium">
+                <InfoCircleOutlined className="mr-1 text-slate-400" />{" "}
+                灵感以待：
+              </Text>
+              <div className="flex-1 h-px bg-slate-100 ml-2"></div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {sampleCommands.map((cmd) => (
+                <button
+                  key={cmd}
+                  onClick={() => onSubmitManual(cmd)}
+                  className="text-left text-sky-600 bg-sky-50/60 hover:bg-sky-100 border border-sky-100 rounded-full py-1.5 px-3 text-[11px] font-medium transition-colors duration-200 cursor-pointer max-w-full truncate"
+                  title={cmd}
+                >
+                  {cmd}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Form onFinish={handleSubmit} className="w-full">
+            <Form.Item className="mb-0">
+              {/* 模拟一个完整的输入框外观，让操作按钮在视觉上“内含” */}
+              <div className="relative flex flex-col rounded-xl border border-gray-200 hover:border-blue-400 focus-within:border-blue-400 focus-within:shadow-[0_0_0_2px_rgba(5,145,255,0.1)] transition-all bg-white overflow-hidden">
+                {optimizingBgText && (
+                  <div className="absolute top-0 left-0 w-full p-3 pb-1 text-sm text-gray-300 whitespace-pre-wrap pointer-events-none select-none z-0">
+                    {optimizingBgText}
+                  </div>
+                )}
+                <Input.TextArea
+                  value={manualText}
+                  onChange={(e) => setManualText(e.target.value)}
+                  placeholder={
+                    optimizingBgText ? "" : "描述你的构想，剩下的交给画布..."
                   }
-                }}
-              />
-              <div className="flex items-center justify-between px-2 pb-2 mt-1">
-                <div className="flex flex-col text-[10px] text-gray-400 pl-1 leading-tight justify-center gap-0.5">
-                  <span>Enter 发送</span>
-                  <span>Shift + Enter 换行</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<ThunderboltOutlined className="text-[#3182ed]" />}
-                    loading={isOptimizing}
-                    onClick={handleOptimize}
-                    className="flex items-center text-xs text-[#3182ed] hover:bg-blue-50 rounded-lg px-2 h-7"
-                  >
-                    AI 优化
-                  </Button>
-                  {isDictationSupported && (
-                    <Tooltip title={isDictating ? "停止语音输入" : "语音输入到文本框"}>
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<AudioOutlined className={isDictating ? "text-rose-500 animate-pulse" : "text-slate-500"} />}
-                        onClick={() => isDictating ? stopDictation() : startDictation()}
-                        className={`flex items-center justify-center rounded-lg h-7 px-2 ${isDictating ? "bg-rose-50 hover:bg-rose-100" : "hover:bg-slate-100"}`}
-                      />
-                    </Tooltip>
-                  )}
-                  <Button
-                    type="primary"
-                    size="small"
-                    icon={<SendOutlined style={{ fontSize: 12 }} />}
-                    onClick={handleSubmit}
-                    className="bg-[#3182ed] border-[#3182ed] hover:bg-[#53a0fa] shadow-sm flex items-center justify-center rounded-lg h-7 px-3"
-                  >
-                    <span className="text-xs">发送</span>
-                  </Button>
+                  autoSize={{ minRows: 3, maxRows: 5 }}
+                  variant="borderless"
+                  className="p-3 pb-1 text-sm resize-none focus:ring-0 shadow-none bg-transparent relative z-10"
+                  onPressEnter={(e) => {
+                    if (!e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit();
+                    }
+                  }}
+                />
+                <div className="flex items-center justify-between px-2 pb-2 mt-1">
+                  <div className="flex flex-col text-[10px] text-gray-400 pl-1 leading-tight justify-center gap-0.5">
+                    <span>Enter 发送</span>
+                    <span>Shift + Enter 换行</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<ThunderboltOutlined className="text-[#3182ed]" />}
+                      loading={isOptimizing}
+                      onClick={handleOptimize}
+                      className="flex items-center text-xs text-[#3182ed] hover:bg-blue-50 rounded-lg px-2 h-7"
+                    >
+                      AI 优化
+                    </Button>
+                    {isDictationSupported && (
+                      <Tooltip
+                        title={
+                          isDictating ? "停止语音输入" : "语音输入到文本框"
+                        }
+                      >
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={
+                            <AudioOutlined
+                              className={
+                                isDictating
+                                  ? "text-rose-500 animate-pulse"
+                                  : "text-slate-500"
+                              }
+                            />
+                          }
+                          onClick={() =>
+                            isDictating ? stopDictation() : startDictation()
+                          }
+                          className={`flex items-center justify-center rounded-lg h-7 px-2 ${isDictating ? "bg-rose-50 hover:bg-rose-100" : "hover:bg-slate-100"}`}
+                        />
+                      </Tooltip>
+                    )}
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<SendOutlined style={{ fontSize: 12 }} />}
+                      onClick={handleSubmit}
+                      className="bg-[#3182ed] border-[#3182ed] hover:bg-[#53a0fa] shadow-sm flex items-center justify-center rounded-lg h-7 px-3"
+                    >
+                      <span className="text-xs">发送</span>
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </Form.Item>
-        </Form>
+            </Form.Item>
+          </Form>
+        </div>
       </div>
     </div>
   );
