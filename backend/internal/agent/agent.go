@@ -182,9 +182,14 @@ func (a *Agent) Run(ctx context.Context, enhancedPrompt string, canvasState []mo
 										isDone = true
 									} else {
 										var resp model.ServerResponse
-										if err := json.Unmarshal([]byte(jsonBuffer), &resp); err == nil && len(resp.Actions) > 0 {
-											allActions = append(allActions, resp.Actions...)
-											onAction(resp)
+										if err := json.Unmarshal([]byte(jsonBuffer), &resp); err == nil {
+											hasContent := len(resp.Actions) > 0 || resp.VoiceReply != "" || resp.Feedback != "" || resp.TaskAnalysis != ""
+											if hasContent {
+												if len(resp.Actions) > 0 {
+													allActions = append(allActions, resp.Actions...)
+												}
+												onAction(resp)
+											}
 										}
 									}
 									jsonBuffer = "" // Reset for next object
