@@ -1,0 +1,16 @@
+/* Custom styles for debug json log highlights in light mode */
+.debug-json-key {
+  color: #0f766e;
+}
+.debug-json-string {
+  color: #16a34a;
+}
+.debug-json-number {
+  color: #0284c7;
+}
+.debug-json-boolean {
+  color: #ea580c;
+}
+.debug-json-null {
+  color: #64748b;
+}

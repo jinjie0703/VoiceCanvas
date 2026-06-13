@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import styles from "./ControlPanel.module.css";
 import {
   Badge,
   Button,
@@ -136,7 +137,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
         <div className="flex flex-col items-center gap-6 my-10">
           <div
-            className={`mic-button-container ${isRecording ? "recording" : ""}`}
+            className={`${styles['mic-button-container']} ${isRecording ? styles.recording : ""}`}
           >
             <Button
               type="primary"
@@ -163,7 +164,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 justifyContent: "center",
               }}
             />
-            <div className="pulse-ring-outer" />
+            <div className={styles['pulse-ring-outer']} />
           </div>
 
           <div className="w-full text-center">
