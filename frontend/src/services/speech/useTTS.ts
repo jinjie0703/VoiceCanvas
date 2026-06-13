@@ -20,6 +20,10 @@ export const useTTS = () => {
     utterance.rate = 1.1; // Slightly faster for snappier feedback
     utterance.pitch = 1.0;
     
+    utterance.onerror = (event) => {
+      console.warn("TTS Playback failed or was interrupted:", event.error);
+    };
+    
     window.speechSynthesis.speak(utterance);
   };
 
