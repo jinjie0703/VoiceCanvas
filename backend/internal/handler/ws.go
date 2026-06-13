@@ -141,12 +141,13 @@ func (h *WebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Ensures sequential processing of user inputs without blocking the Read loop
 	go func() {
 		var chatHistory []string
+		var globalConstraints string
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case clientMsg := <-session.inputCh:
-				chatHistory = h.engine.ProcessInput(ctx, session, clientMsg, chatHistory)
+				chatHistory, globalConstraints = h.engine.ProcessInput(ctx, session, clientMsg, chatHistory, globalConstraints)
 			}
 		}
 	}()
@@ -162,6 +163,11 @@ func (h *WebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err := json.Unmarshal(messageBytes, &clientMsg); err != nil {
 			slog.Error("Failed to unmarshal client message", "error", err)
 			session.SendError("Invalid client message payload")
+			continue
+		}
+
+		// Ignore heartbeat ping
+		if clientMsg.Text == "__ping__" {
 			continue
 		}
 

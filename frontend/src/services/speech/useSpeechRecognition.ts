@@ -40,6 +40,8 @@ export function useSpeechRecognition({
   const onResultRef = useRef(onResult);
   const onListeningStateChangeRef = useRef(onListeningStateChange);
   const intentionallyStoppedRef = useRef(false);
+  const wakeWordRegexRef = useRef(wakeWordRegex);
+  const sleepWordRegexRef = useRef(sleepWordRegex);
 
   const [isAwake, setIsAwake] = useState(false);
   const isAwakeRef = useRef(false);
@@ -47,6 +49,8 @@ export function useSpeechRecognition({
   useEffect(() => {
     onResultRef.current = onResult;
     onListeningStateChangeRef.current = onListeningStateChange;
+    wakeWordRegexRef.current = wakeWordRegex;
+    sleepWordRegexRef.current = sleepWordRegex;
   });
 
   useEffect(() => {
@@ -69,11 +73,15 @@ export function useSpeechRecognition({
 
       rec.onend = () => {
         if (!intentionallyStoppedRef.current) {
-          try {
-            rec.start();
-          } catch {
-            // ignore error if it's already started
-          }
+          setTimeout(() => {
+            try {
+              if (!intentionallyStoppedRef.current) {
+                rec.start();
+              }
+            } catch {
+              // ignore error if it's already started
+            }
+          }, 1000); // 1s backoff to prevent tight CPU loop
         }
       };
 
@@ -82,6 +90,8 @@ export function useSpeechRecognition({
         if (err.error === 'not-allowed') {
           intentionallyStoppedRef.current = true;
           setIsAwake(false);
+        } else if (err.error === 'network' || err.error === 'aborted') {
+          // Will be restarted by onend with backoff
         }
       };
 
@@ -97,17 +107,17 @@ export function useSpeechRecognition({
 
         if (!isAwakeRef.current) {
           // Listen for wake word
-          const match = text.match(wakeWordRegex);
+          const match = text.match(wakeWordRegexRef.current);
           if (match) {
             setIsAwake(true);
-            const command = match[3] ? match[3].trim() : text.replace(wakeWordRegex, "").trim();
-            if (command) {
-              onResultRef.current(command);
+            const remainingText = match[3]?.trim();
+            if (remainingText) {
+              onResultRef.current(remainingText);
             }
           }
         } else {
-          // Listen for sleep word or standard command
-          const sleepMatch = text.match(sleepWordRegex);
+          // Listen for sleep word
+          const sleepMatch = text.match(sleepWordRegexRef.current);
           if (sleepMatch) {
             setIsAwake(false);
             return;

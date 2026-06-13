@@ -62,8 +62,21 @@ export const executeActionEngine = async (
   for (const action of actions) {
     try {
       if (!action.command) continue;
-      const handler = handlers[action.command];
-      if (handler) {
+      // Sanitize critical identifiers to prevent object-injection crashes and fix missing prefixes
+      if (action.target_id !== undefined) {
+        let tid = typeof action.target_id === 'string' ? action.target_id : String(action.target_id);
+        if (!tid.startsWith('shape:')) tid = `shape:${tid}`;
+        action.target_id = tid;
+      }
+      if (action.props && Array.isArray(action.props.target_ids)) {
+        action.props.target_ids = action.props.target_ids
+          .filter(id => typeof id === 'string' || typeof id === 'number')
+          .map(String)
+          .map(id => id.startsWith('shape:') ? id : `shape:${id}`);
+      }
+
+      if (Object.prototype.hasOwnProperty.call(handlers, action.command)) {
+        const handler = handlers[action.command];
         await handler(action, context);
       } else {
         const msg = `Unrecognized command: ${action.command}`;
@@ -78,7 +91,11 @@ export const executeActionEngine = async (
   }
 
   setTimeout(() => {
-    context.editor.zoomToFit({ animation: { duration: 300 } });
+    try {
+      context.editor.zoomToFit({ animation: { duration: 300 } });
+    } catch (e) {
+      console.warn("[ActionEngine] zoomToFit skipped (editor may be disposed):", e);
+    }
   }, 150);
 
   return errors;

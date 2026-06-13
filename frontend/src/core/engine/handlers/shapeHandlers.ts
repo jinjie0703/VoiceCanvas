@@ -1,9 +1,9 @@
 import { toRichText } from "tldraw";
-import type { TLShapeId, TLShapePartial } from "tldraw";
+import type { TLShapeId } from "tldraw";
 import type { ActionHandler } from "../ActionEngine";
 import { resolveActionCoords } from "../../../utils/coords";
-import { filterValidProps } from "../../../utils/tldrawInterceptor";
-import { sanitizeColor, sanitizeGeo } from "../../../utils/sanitizers";
+import { filterValidProps, executeWithInterceptor, executeUpdateWithInterceptor } from "../../../utils/tldrawInterceptor";
+import { sanitizeColor, sanitizeGeo, sanitizeNumber } from "../../../utils/sanitizers";
 
 /** 提取 shape.props 中常用字段的辅助类型，避免重复的 `as unknown as X` 双重断言 */
 type ShapePropsWithMeta = { color?: string; geo?: string };
@@ -19,12 +19,12 @@ export const handleCreateShape: ActionHandler = (action, { editor, canvasW, canv
   const defaultColor = shapeType === "note" ? "yellow" : "blue";
   const shapeProps: Record<string, unknown> = {
     color: sanitizeColor(action.props?.color, defaultColor),
-    richText: toRichText(action.text || ""),
+    richText: toRichText(action.text !== undefined && action.text !== null ? String(action.text) : ""),
   };
 
   if (shapeType !== "note") {
-    shapeProps.w = action.props?.w || 150;
-    shapeProps.h = action.props?.h || 100;
+    shapeProps.w = sanitizeNumber(action.props?.w, 150);
+    shapeProps.h = sanitizeNumber(action.props?.h, 100);
     shapeProps.geo = sanitizeGeo(action.props?.geo, "rectangle");
   }
 
@@ -35,7 +35,7 @@ export const handleCreateShape: ActionHandler = (action, { editor, canvasW, canv
     props: shapeProps,
   };
   if (action.target_id) newShape.id = action.target_id;
-  editor.createShape(newShape as TLShapePartial);
+  executeWithInterceptor(editor, newShape);
 };
 
 /**
@@ -62,19 +62,19 @@ export const handleModifyShape: ActionHandler = (action, { editor }) => {
     delete cleanProps.w;
     delete cleanProps.h;
     delete cleanProps.text;
-    if (action.text !== undefined) cleanProps.richText = toRichText(action.text);
+    if (action.text !== undefined && action.text !== null) cleanProps.richText = toRichText(String(action.text));
   } else {
-    if (action.text !== undefined) cleanProps.richText = toRichText(action.text);
+    if (action.text !== undefined && action.text !== null) cleanProps.richText = toRichText(String(action.text));
   }
 
-  editor.updateShape({
+  executeUpdateWithInterceptor(editor, {
     id: targetId,
     type: currentShape.type,
     props: filterValidProps(editor, currentShape.type, {
       ...currentShape.props,
       ...cleanProps,
     }),
-  } as TLShapePartial);
+  });
 };
 
 /** 处理 delete_shape 指令：根据 target_id 删除指定 shape。 */
@@ -85,11 +85,16 @@ export const handleDeleteShape: ActionHandler = (action, { editor }) => {
 
 /** 处理 align_shapes 指令：对齐多个 shape（水平居中、左对齐等）。 */
 export const handleAlignShapes: ActionHandler = (action, { editor }) => {
-  const targetIds = ((action.props?.target_ids as string[]) || []).map((id) => id as TLShapeId);
+  const rawIds = Array.isArray(action.props?.target_ids) ? action.props.target_ids : [];
+  const targetIds = rawIds.map((id) => id as TLShapeId);
   if (targetIds.length < 2) return;
   let alignment = (action.props?.alignment as string) || "center-horizontal";
   if (alignment === "center") alignment = "center-horizontal";
   if (alignment === "middle") alignment = "center-vertical";
+  const validAlignments = ["top", "left", "right", "bottom", "center-horizontal", "center-vertical"];
+  if (!validAlignments.includes(alignment)) {
+    alignment = "center-horizontal";
+  }
   editor.alignShapes(targetIds, alignment as "top" | "left" | "right" | "bottom" | "center-horizontal" | "center-vertical");
 };
 
