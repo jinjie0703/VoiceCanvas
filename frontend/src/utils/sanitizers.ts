@@ -34,3 +34,20 @@ export const sanitizeGeo = (geo: unknown, defaultGeo: string): string => {
   if (VALID_TLDRAW_GEOS.has(lowerGeo)) return lowerGeo;
   return defaultGeo;
 };
+
+/**
+ * 校验并修正数值类型，确保不传入包含单位的字符串或非法类型。
+ *
+ * @param num - 待校验的数值（可能为字符串，例如 "300px" 或 "300"）
+ * @param defaultNum - 校验失败时的回退数值
+ * @returns 合法的 number 类型
+ */
+export const sanitizeNumber = (num: unknown, defaultNum: number): number => {
+  if (typeof num === "number" && isFinite(num)) return num;
+  if (typeof num === "string") {
+    const parsed = parseFloat(num);
+    if (!isNaN(parsed) && isFinite(parsed)) return parsed;
+  }
+  return defaultNum;
+};
+

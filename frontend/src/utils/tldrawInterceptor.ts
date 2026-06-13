@@ -1,4 +1,4 @@
-import type { Editor, TLShape } from "tldraw";
+import type { Editor, TLShape, TLShapeId } from "tldraw";
 import {
   VALID_TLDRAW_COLORS,
   VALID_TLDRAW_DASHES,
@@ -109,25 +109,29 @@ export function filterValidProps(editor: Editor, type: string, rawProps: Record<
 export const executeWithInterceptor = (editor: Editor, shapePayload: Record<string, unknown>) => {
   const shape = { ...shapePayload };
   
+  // 0. Sanitize ID format
+  if (shape.id && typeof shape.id === 'string' && !shape.id.startsWith('shape:')) {
+    shape.id = `shape:${shape.id}`;
+  }
+
   // 1. Verify shape type exists, fallback to geo if unknown
+  if (typeof shape.type !== 'string' || !shape.type) {
+    shape.type = 'geo';
+  }
   try {
-    if (typeof shape.type === 'string') {
-      const util = editor.getShapeUtil(shape.type as TLShape["type"]);
-      if (!util) {
-        shape.props = { ...(shape.props as Record<string, unknown> || {}), geo: shape.type };
-        shape.type = 'geo';
-      }
-    }
-  } catch {
-    // Type not recognized, fallback to geo
-    if (typeof shape.type === 'string') {
+    const util = editor.getShapeUtil(shape.type as TLShape["type"]);
+    if (!util) {
       shape.props = { ...(shape.props as Record<string, unknown> || {}), geo: shape.type };
       shape.type = 'geo';
     }
+  } catch {
+    // Type not recognized, fallback to geo
+    shape.props = { ...(shape.props as Record<string, unknown> || {}), geo: shape.type };
+    shape.type = 'geo';
   }
 
   // 2. Pre-sanitize props to avoid throwing transaction errors
-  if (shape.props && typeof shape.props === 'object') {
+  if (shape.props && typeof shape.props === 'object' && shape.props !== null) {
     shape.props = filterValidProps(editor, shape.type as string || 'geo', shape.props as Record<string, unknown>);
   }
 
@@ -150,3 +154,57 @@ export const executeWithInterceptor = (editor: Editor, shapePayload: Record<stri
     }
   }
 };
+
+/**
+ * 带拦截和降级回退的 shape 更新执行器。
+ * 捕获 LLM 幻觉导致的验证失败，并在失败时剥离更新的自定义属性，只更新非 props 字段（或者忽略 props 更新）。
+ */
+export const executeUpdateWithInterceptor = (editor: Editor, shapePayload: Record<string, unknown>) => {
+  const shape = { ...shapePayload };
+
+  // 0. Sanitize ID format
+  if (shape.id && typeof shape.id === 'string' && !shape.id.startsWith('shape:')) {
+    shape.id = `shape:${shape.id}`;
+  }
+
+  if ('type' in shape) {
+    if (typeof shape.type === 'string') {
+      try {
+        const util = editor.getShapeUtil(shape.type as TLShape["type"]);
+        if (!util) {
+          delete shape.type;
+        }
+      } catch {
+        delete shape.type;
+      }
+    } else {
+      delete shape.type;
+    }
+  }
+
+  // 2. Pre-sanitize props
+  if (shape.props && typeof shape.props === 'object' && shape.props !== null) {
+    const typeForProps = (shape.type as string) || editor.getShape(shape.id as TLShapeId)?.type || 'geo';
+    shape.props = filterValidProps(editor, typeForProps, shape.props as Record<string, unknown>);
+  }
+
+  // 3. Try normal update
+  try {
+    editor.updateShape(shape as Parameters<Editor["updateShape"]>[0]);
+  } catch (err) {
+    console.warn("TLDraw Update 验证失败，触发拦截器降级处理:", (err as Error).message);
+    
+    // 4. Fallback strategy: Strip all custom props and only try to update base shape (like x, y)
+    if (shape.props) {
+      const fallbackShape = { ...shape };
+      delete fallbackShape.props; 
+      try {
+        editor.updateShape(fallbackShape as Parameters<Editor["updateShape"]>[0]);
+        console.info("拦截器 Update：已剥离非法属性，保留坐标/基本更新。");
+      } catch (fallbackErr) {
+        console.error("拦截器 Update：彻底无法挽救的异常数据", fallbackErr);
+      }
+    }
+  }
+};
+
