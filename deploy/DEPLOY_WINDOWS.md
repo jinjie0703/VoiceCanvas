@@ -14,10 +14,10 @@
 
 ### 2. 配置环境变量
 
-在使用一键部署前，建议先在系统的“高级系统设置 -> 环境变量”中配置您的 API 密钥，增加一个用户/系统变量：
+在使用一键部署前，请先进入 `backend` 目录，将 `.env.example` 文件复制一份并重命名为 `.env`，然后在其中填入您的 API 密钥：
 
-- **变量名**: `DASHSCOPE_API_KEY`
-- **变量值**: `您的_阿里云百炼_API_KEY`
+- 打开 `backend/.env` 文件
+- 找到 `DASHSCOPE_API_KEY=your_dashscope_api_key_here` 并替换为您真实的密钥。
 
 ### 3. 执行一键部署脚本
 
@@ -54,8 +54,7 @@
 
 ```powershell
 cd backend
-# 临时配置当前会话的 API 密钥
-$env:DASHSCOPE_API_KEY="您的_API_KEY"
+# 确保已复制 .env.example 为 .env 并填入密钥
 # 启动后端程序，开始监听 8080 端口的 WebSocket
 .\voice-canvas-backend.exe
 ```
@@ -70,3 +69,4 @@ npm run dev
 ```
 
 **（生产服务器）** 如果需要将应用部署在 Windows Server 生产环境对外提供服务，推荐配置 **IIS (Internet Information Services)** 或 **Nginx for Windows**，并将站点的物理路径指向刚刚编译好的 `frontend/dist` 文件夹，并确保在路由配置中设置了 URL Rewrite (重写) 将 404 请求转发至 `index.html`。
+> **注意**：您还需要配置反向代理，将 `/ws` 和 `/api` 路径转发至后端的 `127.0.0.1:8080`，否则前端无法连接到后端服务。

@@ -75,7 +75,7 @@ if "%OPTION%"=="2" (
     echo.
     echo   Terminal 1 (Backend):
     echo     cd backend
-    echo     set DASHSCOPE_API_KEY=your_key_here
+    echo     (Make sure backend/.env is created and configured)
     echo     voice-canvas-backend.exe
     echo.
     echo   Terminal 2 (Frontend - Dev Mode):

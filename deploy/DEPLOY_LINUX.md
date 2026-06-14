@@ -14,10 +14,13 @@
 
 ### 2. 配置环境变量
 
-项目中的智能体需要调用大语言模型 API。在开始部署前，请将您的 API 密钥设置到当前 Shell 环境变量中（Docker Compose 会自动读取）：
+项目中的智能体需要调用大语言模型 API。在开始部署前，请先进入 `backend` 目录，复制 `.env.example` 为 `.env` 并填入密钥：
 
 ```bash
-export DASHSCOPE_API_KEY="您的_阿里云百炼_API_KEY"
+cd backend
+cp .env.example .env
+nano .env # 填入您的 DASHSCOPE_API_KEY
+cd ..
 ```
 
 ### 3. 运行一键部署脚本
@@ -66,7 +69,7 @@ bash deploy.sh
 
 ```bash
 cd backend
-export DASHSCOPE_API_KEY="您的_API_KEY"
+# 确保已经配置好 .env 文件
 nohup ./voice-canvas-backend > backend.log 2>&1 &
 ```
 
@@ -86,6 +89,18 @@ server {
     # 关键配置：防止 SPA 单页应用刷新报 404
     location / {
         try_files $uri $uri/ /index.html;
+    }
+
+    # 代理 WebSocket 与 API 请求至后端服务
+    location /ws {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    location /api {
+        proxy_pass http://127.0.0.1:8080;
     }
 }
 ```
