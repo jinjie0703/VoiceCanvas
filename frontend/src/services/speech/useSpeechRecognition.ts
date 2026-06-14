@@ -27,7 +27,7 @@ interface WindowWithSpeech extends Window {
 export function useSpeechRecognition({ 
   onResult, 
   onListeningStateChange,
-  wakeWordRegex = /(hi|嗨|hai|海)[\s,，]*(canvas|画板|画布)(.*)/i,
+  wakeWordRegex = /(hi|hey|hello|嗨|hai|海|哈喽|你好)[\s,，]*(canvas|画板|画布)(.*)/i,
   sleepWordRegex = /(关闭|退出|休息)[\s,，]*(canvas|画板|画布)?/i,
 }: UseSpeechRecognitionProps) {
   const [isSupported] = useState(() => {
@@ -96,33 +96,36 @@ export function useSpeechRecognition({
       };
 
       rec.onresult = (event: unknown) => {
-        const speechEvent = event as { results: { isFinal: boolean; [key: number]: { transcript: string } }[] };
+        const speechEvent = event as { resultIndex: number, results: { isFinal: boolean; [key: number]: { transcript: string } }[] };
         const results = speechEvent.results;
         if (!results || results.length === 0) return;
-        const latestResult = results[results.length - 1];
-        if (!latestResult.isFinal) return;
 
-        const text = latestResult[0].transcript.toLowerCase().trim();
-        if (!text) return;
+        for (let i = speechEvent.resultIndex; i < results.length; i++) {
+          const result = results[i];
+          if (!result.isFinal) continue;
 
-        if (!isAwakeRef.current) {
-          // Listen for wake word
-          const match = text.match(wakeWordRegexRef.current);
-          if (match) {
-            setIsAwake(true);
-            const remainingText = match[3]?.trim();
-            if (remainingText) {
-              onResultRef.current(remainingText);
+          const text = result[0].transcript.toLowerCase().trim();
+          if (!text) continue;
+
+          if (!isAwakeRef.current) {
+            // Listen for wake word
+            const match = text.match(wakeWordRegexRef.current);
+            if (match) {
+              setIsAwake(true);
+              const remainingText = match[3]?.trim();
+              if (remainingText) {
+                onResultRef.current(remainingText);
+              }
             }
+          } else {
+            // Listen for sleep word
+            const sleepMatch = text.match(sleepWordRegexRef.current);
+            if (sleepMatch) {
+              setIsAwake(false);
+              continue;
+            }
+            onResultRef.current(text);
           }
-        } else {
-          // Listen for sleep word
-          const sleepMatch = text.match(sleepWordRegexRef.current);
-          if (sleepMatch) {
-            setIsAwake(false);
-            return;
-          }
-          onResultRef.current(text);
         }
       };
 
