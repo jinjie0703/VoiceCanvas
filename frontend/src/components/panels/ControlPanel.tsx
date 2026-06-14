@@ -20,7 +20,6 @@ import {
 
 import { useAppStore } from "../../store/useAppStore";
 import { generateTextStream } from "../../api/ai";
-import { useSpeechRecognition } from "../../services/speech/useSpeechRecognition";
 import { AudioVisualizer } from "./AudioVisualizer";
 
 const { Title, Text } = Typography;
@@ -44,20 +43,26 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const statusText = useAppStore((state) => state.statusText);
   const transcript = useAppStore((state) => state.transcript);
   const onHidePanel = () => useAppStore.getState().setLeftPanelVisible(false);
-  const [manualText, setManualText] = useState("");
+  const manualText = useAppStore((state) => state.inputBoxText);
+  const setManualText = useAppStore((state) => state.setInputBoxText);
+  const dictationTarget = useAppStore((state) => state.dictationTarget);
+  const setDictationTarget = useAppStore((state) => state.setDictationTarget);
+  
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizingBgText, setOptimizingBgText] = useState("");
 
-  const {
-    isRecording: isDictating,
-    isSupported: isDictationSupported,
-    startRecording: startDictation,
-    stopRecording: stopDictation,
-  } = useSpeechRecognition({
-    onResult: (text) => {
-      setManualText((prev) => prev + text);
-    },
-  });
+  const isDictating = isRecording && dictationTarget === "input";
+  const isDictationSupported = isSpeechSupported;
+
+  const startDictation = () => {
+    setDictationTarget("input");
+    onStartRecording();
+  };
+
+  const stopDictation = () => {
+    setDictationTarget("ai");
+    onStopRecording();
+  };
 
   const handleOptimize = () => {
     if (!manualText.trim()) {
@@ -144,7 +149,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
           <div className="flex flex-col items-center gap-4 my-2 p-5 bg-linear-to-b from-slate-50/80 to-slate-100/40 backdrop-blur-sm rounded-2xl border border-white/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)] relative overflow-hidden">
             <div
-              className={`${styles["mic-button-container"]} ${isRecording ? styles.recording : ""} z-10`}
+              className={`${styles["mic-button-container"]} ${isRecording && dictationTarget === "ai" ? styles.recording : ""} z-10`}
             >
               <div className={styles["vc-ripple-ring"]} />
               <div className={styles["vc-ripple-ring-1"]} />
@@ -152,25 +157,30 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               <Button
                 type="primary"
                 shape="circle"
-                icon={
-                  <AudioOutlined
-                    style={{ fontSize: 24 }}
-                    className={isRecording ? "animate-pulse" : ""}
-                  />
-                }
-                disabled={!isSpeechSupported}
-                onClick={() =>
-                  isRecording ? onStopRecording() : onStartRecording()
-                }
-                style={{
-                  width: 64,
-                  height: 64,
-                }}
-                className={`z-10 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 border-none! ${
-                  isRecording
-                    ? "bg-rose-500! shadow-md shadow-rose-500/30"
-                    : "bg-[#3182ed]! shadow-md hover:shadow-lg shadow-[#3182ed]/20"
-                }`}
+                  icon={
+                    <AudioOutlined
+                      style={{ fontSize: 24 }}
+                      className={isRecording && dictationTarget === "ai" ? "animate-pulse" : ""}
+                    />
+                  }
+                  disabled={!isSpeechSupported}
+                  onClick={() => {
+                    if (isRecording && dictationTarget === "ai") {
+                      onStopRecording();
+                    } else {
+                      setDictationTarget("ai");
+                      onStartRecording();
+                    }
+                  }}
+                  style={{
+                    width: 64,
+                    height: 64,
+                  }}
+                  className={`z-10 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 border-none! ${
+                    isRecording && dictationTarget === "ai"
+                      ? "bg-rose-500! shadow-md shadow-rose-500/30"
+                      : "bg-[#3182ed]! shadow-md hover:shadow-lg shadow-[#3182ed]/20"
+                  }`}
               />
             </div>
 
@@ -183,14 +193,14 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               <Text
                 strong
                 className={`block text-[11px] uppercase tracking-widest mb-2 ${
-                  isRecording
+                  isRecording && dictationTarget === "ai"
                     ? "text-rose-500"
                     : statusText.includes("🧠")
                       ? "text-emerald-500 font-bold"
                       : "text-slate-400"
                 }`}
               >
-                {isRecording ? "侧耳倾听..." : statusText}
+                {isRecording && dictationTarget === "ai" ? "侧耳倾听..." : statusText}
               </Text>
 
               <div className="bg-white/80 border border-slate-200 rounded-lg py-1.5 px-3 shadow-sm min-h-8 flex items-center justify-center">
@@ -229,7 +239,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           <Form onFinish={handleSubmit} className="w-full">
             <Form.Item className="mb-0">
               {/* 模拟一个完整的输入框外观，让操作按钮在视觉上“内含” */}
-              <div className="relative flex flex-col rounded-xl border border-gray-200 hover:border-blue-400 focus-within:border-blue-400 focus-within:shadow-[0_0_0_2px_rgba(5,145,255,0.1)] transition-all bg-white overflow-hidden">
+              <div className={`relative flex flex-col rounded-xl border transition-all bg-white overflow-hidden ${
+                isDictating 
+                  ? "border-emerald-400 shadow-[0_0_0_2px_rgba(16,185,129,0.15)] bg-emerald-50/10" 
+                  : "border-gray-200 hover:border-blue-400 focus-within:border-blue-400 focus-within:shadow-[0_0_0_2px_rgba(5,145,255,0.1)]"
+              }`}>
                 {optimizingBgText && (
                   <div className="absolute top-0 left-0 w-full p-3 pb-1 text-sm text-gray-300 whitespace-pre-wrap pointer-events-none select-none z-0">
                     {optimizingBgText}
@@ -239,7 +253,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                   value={manualText}
                   onChange={(e) => setManualText(e.target.value)}
                   placeholder={
-                    optimizingBgText ? "" : "描述你的构想，剩下的交给画布..."
+                    optimizingBgText
+                      ? ""
+                      : isDictating
+                        ? "🎙️ 正在聆听您的声音，将自动转为文字..."
+                        : "描述你的构想，剩下的交给画布..."
                   }
                   autoSize={{ minRows: 3, maxRows: 5 }}
                   variant="borderless"
@@ -288,7 +306,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                           onClick={() =>
                             isDictating ? stopDictation() : startDictation()
                           }
-                          className={`flex items-center justify-center rounded-lg h-7 px-2 ${isDictating ? "bg-rose-50 hover:bg-rose-100" : "hover:bg-slate-100"}`}
+                          className={`flex items-center justify-center rounded-lg h-7 px-2 transition-all ${isDictating ? "bg-rose-50 hover:bg-rose-100 shadow-inner" : "hover:bg-slate-100"}`}
                         />
                       </Tooltip>
                     )}
