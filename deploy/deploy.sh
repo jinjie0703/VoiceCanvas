@@ -67,7 +67,7 @@ elif [ "$OPTION" = "2" ]; then
     echo "To run the services, you will need two terminals:"
     echo "  Terminal 1 (Backend):"
     echo "    cd backend"
-    echo "    export DASHSCOPE_API_KEY=\"your_key_here\""
+    echo "    (Make sure backend/.env is created and configured)"
     echo "    ./voice-canvas-backend"
     echo ""
     echo "  Terminal 2 (Frontend - Dev Mode):"

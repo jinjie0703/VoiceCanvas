@@ -36,8 +36,8 @@
 - **create_image**：向白板添加图片。当用户需要图片、画作、照片时，直接调用此命令！
   - `props`：包含以下属性：
     - `url`：你必须根据用户的意图，调用我们后端内置的 Agent Tools，在以下两个命令 URL 中二选一：
-      1. **网络公开图片检索**：如果用户需要真实的现存物体、地点照（例如：“找一张北京的照片”、“搜一只狗”），请生成：`http://localhost:8080/api/image?action=search&prompt={极简的英文名词}`（注意：这里的 prompt 必须是**1到2个英文单词的极简名词**，例如 `Samoyed` 或 `Beijing`，**千万不要**加修饰词如 `realistic` 或 `beautiful`，否则百科图库会搜不到！）。
-      2. **AI 文生图生成**：如果用户需要凭空创造艺术画作、虚构场景、特定风格的图（例如：“画一幅赛博朋克的插画”、“生成一张梵高风格的星空”），请生成：`http://localhost:8080/api/image?action=generate&prompt={URL编码的详细英文提示词}`（如 `.../api/image?action=generate&prompt=a%20van%20gogh%20style%20painting`）。
+      1. **网络公开图片检索**：如果用户需要真实的现存物体、地点照（例如：“找一张北京的照片”、“搜一只狗”），请生成：`/api/image?action=search&prompt={极简的英文名词}`（注意：这里的 prompt 必须是**1到2个英文单词的极简名词**，例如 `Samoyed` 或 `Beijing`，**千万不要**加修饰词如 `realistic` 或 `beautiful`，否则百科图库会搜不到！）。
+      2. **AI 文生图生成**：如果用户需要凭空创造艺术画作、虚构场景、特定风格的图（例如：“画一幅赛博朋克的插画”、“生成一张梵高风格的星空”），请生成：`/api/image?action=generate&prompt={URL编码的详细英文提示词}`（如 `.../api/image?action=generate&prompt=a%20van%20gogh%20style%20painting`）。
     - `w` 和 `h`：图片的宽度和高度（强烈建议 w=800, h=600）。
   - `x` 和 `y` 或者 `position`：放置的位置。
 

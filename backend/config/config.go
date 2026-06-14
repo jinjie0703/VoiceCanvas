@@ -51,12 +51,12 @@ func Load() *Config {
 
 	largeModel := os.Getenv("LARGE_MODEL")
 	if largeModel == "" {
-		largeModel = "qwen-plus"
+		largeModel = "qwen-max"
 	}
 
 	visionModel := os.Getenv("VISION_MODEL")
 	if visionModel == "" {
-		visionModel = "qwen-vl-max-latest"
+		visionModel = "qwen3-omni-flash-realtime-2025-09-15"
 	}
 
 	return &Config{
