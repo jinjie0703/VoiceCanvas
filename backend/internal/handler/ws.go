@@ -125,6 +125,8 @@ func (h *WebSocketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
+	// Set read limit to 50MB to allow large base64 image snapshots
+	conn.SetReadLimit(50 * 1024 * 1024)
 	slog.Info("Client connected via WebSocket")
 
 	ctx, cancel := context.WithCancel(context.Background())

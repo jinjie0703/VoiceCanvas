@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -86,6 +87,10 @@ func (e *Enhancer) Enhance(ctx context.Context, text string, state []model.Canva
 		return nil, err
 	}
 
+	if len(resp.Choices) == 0 {
+		slog.Error("Enhancer API returned empty choices")
+		return nil, errors.New("empty choices returned from enhancer model")
+	}
 	content := resp.Choices[0].Message.Content
 	var result EnhancementResult
 	if err := json.Unmarshal([]byte(content), &result); err != nil {

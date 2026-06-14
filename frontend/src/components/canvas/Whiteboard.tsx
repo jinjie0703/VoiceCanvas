@@ -85,7 +85,9 @@ export const Whiteboard = React.memo(
         if (shapeIds.size === 0) return undefined;
 
         const result = await editor.toImage(Array.from(shapeIds), {
-          format: "png",
+          format: "jpeg", // Use JPEG instead of PNG to drastically reduce size and prevent OOM
+          quality: 0.6,   // 60% quality is plenty for LLM visual reasoning
+          scale: 0.8,     // Slight downscale to further reduce memory footprint
           padding: 16,
           background: true,
         });

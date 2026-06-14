@@ -21,8 +21,13 @@ func GenerateWanxImage(ctx context.Context, prompt string) (string, error) {
 		return "", fmt.Errorf("DASHSCOPE_API_KEY is not set")
 	}
 
+	modelName := os.Getenv("IMAGE_MODEL")
+	if modelName == "" {
+		modelName = "wanx-v1"
+	}
+
 	reqBody := map[string]interface{}{
-		"model": "wanx-v1",
+		"model": modelName,
 		"input": map[string]interface{}{
 			"prompt": prompt,
 		},
