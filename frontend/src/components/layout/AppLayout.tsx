@@ -61,6 +61,8 @@ export default function AppLayout() {
   // Buffer and lock for sequential processing
   const messageQueue = useRef<string[]>([]);
   const isProcessing = useRef<boolean>(false);
+  const voiceBufferRef = useRef<string[]>([]);
+  const voiceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const executionErrorsRef = useRef<string[]>([]);
   const sendRequestRef = useRef<
     ((text: string, canvasState: CanvasElement[], error?: string, base64Image?: string) => boolean) | null
@@ -78,10 +80,7 @@ export default function AppLayout() {
 
     const canvasSnapshot =
       whiteboardRef.current?.getCanvasStateSnapshot() || [];
-    let base64Image: string | undefined;
-    if (whiteboardRef.current?.exportSnapshotAsBase64) {
-      base64Image = await whiteboardRef.current.exportSnapshotAsBase64();
-    }
+    const base64Image = undefined; // 暂时禁用整图截图，防止无限画布导致浏览器卡死和内存崩溃
 
     const success = sendRequestRef.current?.(
       nextText,
@@ -99,7 +98,9 @@ export default function AppLayout() {
   };
 
   useEffect(() => {
-    if (wsStatus === "connected" && messageQueue.current.length > 0) {
+    if (wsStatus === "disconnected") {
+      isProcessing.current = false; // 防止后端崩溃导致状态死锁
+    } else if (wsStatus === "connected" && messageQueue.current.length > 0) {
       processNextMessage();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -177,8 +178,26 @@ export default function AppLayout() {
   }, [sendRequest]);
 
   const handleVoiceResult = (text: string) => {
-    setTranscript(`语音输入: "${text}"`);
-    triggerSend(text);
+    const target = useAppStore.getState().dictationTarget;
+    if (target === "input") {
+      useAppStore.getState().setInputBoxText((prev) => prev + text);
+    } else {
+      voiceBufferRef.current.push(text);
+      const currentSentence = voiceBufferRef.current.join("，");
+      setTranscript(`正在倾听: "${currentSentence}..."`);
+
+      if (voiceTimeoutRef.current) {
+        clearTimeout(voiceTimeoutRef.current);
+      }
+      voiceTimeoutRef.current = setTimeout(() => {
+        const finalSentence = voiceBufferRef.current.join("，");
+        voiceBufferRef.current = [];
+        if (finalSentence.trim()) {
+          setTranscript(`语音输入: "${finalSentence}"`);
+          triggerSend(finalSentence);
+        }
+      }, 2000); // 等待2秒无声音才发送
+    }
   };
 
   const {
@@ -188,7 +207,33 @@ export default function AppLayout() {
     stopRecording,
   } = useSpeechRecognition({
     onResult: handleVoiceResult,
+    onListeningStateChange: (isAwake) => {
+      if (isAwake) {
+        useAppStore.getState().setDictationTarget("ai");
+        const currentTranscript = useAppStore.getState().transcript;
+        if (currentTranscript === "✨ 倾听思考的形状..." || currentTranscript === "") {
+          setTranscript("侧耳倾听...");
+        }
+      } else {
+        setTranscript("✨ 倾听思考的形状...");
+      }
+    },
   });
+
+  const handleManualStopRecording = () => {
+    if (voiceTimeoutRef.current) {
+      clearTimeout(voiceTimeoutRef.current);
+      if (voiceBufferRef.current.length > 0) {
+        const finalSentence = voiceBufferRef.current.join("，");
+        voiceBufferRef.current = [];
+        if (finalSentence.trim()) {
+          setTranscript(`语音输入: "${finalSentence}"`);
+          triggerSend(finalSentence);
+        }
+      }
+    }
+    stopRecording();
+  };
 
   const triggerSend = (text: string) => {
     messageQueue.current.push(text);
@@ -232,7 +277,7 @@ export default function AppLayout() {
                 isRecording={isRecording}
                 isSpeechSupported={isSpeechSupported}
                 onStartRecording={startRecording}
-                onStopRecording={stopRecording}
+                onStopRecording={handleManualStopRecording}
                 onSubmitManual={handleManualSubmit}
               />
             </ErrorBoundary>
@@ -287,9 +332,14 @@ export default function AppLayout() {
                         className={isRecording ? "animate-pulse" : ""}
                       />
                     }
-                    onClick={() =>
-                      isRecording ? stopRecording() : startRecording()
-                    }
+                    onClick={() => {
+                      if (isRecording && useAppStore.getState().dictationTarget === "ai") {
+                        handleManualStopRecording();
+                      } else {
+                        useAppStore.getState().setDictationTarget("ai");
+                        startRecording();
+                      }
+                    }}
                     style={{
                       width: 64,
                       height: 64,

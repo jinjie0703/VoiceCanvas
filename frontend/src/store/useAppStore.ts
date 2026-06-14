@@ -13,6 +13,10 @@ interface AppState {
   debugLogs: DebugLog[];
   wsStatus: "connected" | "disconnected";
 
+  // Dictation State
+  inputBoxText: string;
+  dictationTarget: "ai" | "input";
+
   // Actions
   setLeftPanelVisible: (visible: boolean) => void;
   setRightPanelVisible: (visible: boolean) => void;
@@ -22,6 +26,8 @@ interface AppState {
   addDebugLog: (log: DebugLog) => void;
   clearDebugLogs: () => void;
   setWsStatus: (status: "connected" | "disconnected") => void;
+  setInputBoxText: (text: string | ((prev: string) => string)) => void;
+  setDictationTarget: (target: "ai" | "input") => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -33,6 +39,8 @@ export const useAppStore = create<AppState>((set) => ({
   transcript: "✨ 倾听思考的形状...",
   debugLogs: [],
   wsStatus: "disconnected",
+  inputBoxText: "",
+  dictationTarget: "ai",
 
   // Actions
   setLeftPanelVisible: (visible) => set({ leftPanelVisible: visible }),
@@ -44,4 +52,9 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({ debugLogs: [log, ...state.debugLogs] })),
   clearDebugLogs: () => set({ debugLogs: [] }),
   setWsStatus: (status) => set({ wsStatus: status }),
+  setInputBoxText: (text) =>
+    set((state) => ({
+      inputBoxText: typeof text === "function" ? text(state.inputBoxText) : text,
+    })),
+  setDictationTarget: (target) => set({ dictationTarget: target }),
 }));
