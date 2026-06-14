@@ -70,7 +70,7 @@ export const handleCreateImage: ActionHandler = (action, { editor, canvasW, canv
     y,
     props: filterValidProps(editor, "note", {
       color: "light-blue",
-      richText: toRichText("⏳ 正在调用大模型生成图片，可能需要 10-20 秒，请稍候..."),
+      richText: toRichText("⏳ 正在调用大模型生成图片，可能需要 30-60 秒，请稍候..."),
     }),
   });
 
@@ -84,7 +84,7 @@ export const handleCreateImage: ActionHandler = (action, { editor, canvasW, canv
 
     const timeoutId = setTimeout(() => {
       if (isResolved) return;
-      console.warn("Image loading timed out after 30s");
+      console.warn("Image loading timed out after 90s");
       executeUpdateWithInterceptor(editor, {
         id: placeholderId,
         type: "note",
@@ -94,7 +94,7 @@ export const handleCreateImage: ActionHandler = (action, { editor, canvasW, canv
         }),
       });
       finish();
-    }, 30000);
+    }, 90000);
 
     const img = new Image();
     img.crossOrigin = "anonymous";
