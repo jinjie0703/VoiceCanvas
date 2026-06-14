@@ -47,9 +47,20 @@ func (e *Engine) ProcessInput(ctx context.Context, session ClientSession, client
 	if e.enhancer != nil {
 		enhRes, err := e.enhancer.Enhance(ctx, clientMsg.Text, clientMsg.CanvasState, chatHistory, globalConstraints)
 		if err == nil {
+			if enhRes.IsConversational && enhRes.VoiceReply != "" {
+				slog.Info("Conversational intent detected", "reply", enhRes.VoiceReply)
+				_ = session.SendServerResponse(model.ServerResponse{
+					VoiceReply: enhRes.VoiceReply,
+					Actions:    []model.DrawAction{},
+				}, clientMsg.Text)
+				_ = session.SendServerResponse(model.ServerResponse{Actions: []model.DrawAction{}}, "__done__")
+				return chatHistory, globalConstraints
+			}
+
 			if !enhRes.IsValid {
 				slog.Info("Enhancer rejected input", "feedback", enhRes.FeedbackMsg)
-				session.SendFeedback(enhRes.FeedbackMsg, clientMsg.Text)
+				_ = session.SendFeedback(enhRes.FeedbackMsg, clientMsg.Text)
+				_ = session.SendServerResponse(model.ServerResponse{Actions: []model.DrawAction{}}, "__done__")
 				return chatHistory, globalConstraints // Early return, don't update history with invalid input
 			}
 			finalPrompt = enhRes.EnhancedPrompt

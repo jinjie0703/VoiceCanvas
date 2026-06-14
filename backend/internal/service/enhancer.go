@@ -36,7 +36,9 @@ func NewEnhancer(cfg *config.Config) *Enhancer {
 
 type EnhancementResult struct {
 	IsValid           bool   `json:"is_valid"`
+	IsConversational  bool   `json:"is_conversational"`
 	FeedbackMsg       string `json:"feedback_msg"`
+	VoiceReply        string `json:"voice_reply"`
 	EnhancedPrompt    string `json:"enhanced_prompt"`
 	GlobalConstraints string `json:"global_constraints"`
 }
