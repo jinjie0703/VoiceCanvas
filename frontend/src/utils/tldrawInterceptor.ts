@@ -1,4 +1,5 @@
 import type { Editor, TLShape, TLShapeId } from "tldraw";
+import { toRichText } from "tldraw";
 import {
   VALID_TLDRAW_COLORS,
   VALID_TLDRAW_DASHES,
@@ -51,9 +52,22 @@ function sanitizeShapeProps(props: Record<string, unknown>) {
     }
   }
 
+  if (typeof clean.align === 'string') {
+    let a = clean.align.toLowerCase();
+    if (a === 'center') a = 'middle';
+    clean.align = a;
+    if (!VALID_TLDRAW_ALIGNS.has(a)) delete clean.align;
+  }
+
+  if (typeof clean.textAlign === 'string') {
+    let a = clean.textAlign.toLowerCase();
+    if (a === 'center') a = 'middle';
+    clean.textAlign = a;
+    if (!VALID_TLDRAW_ALIGNS.has(a)) delete clean.textAlign;
+  }
+
   if (typeof clean.dash === 'string' && !VALID_TLDRAW_DASHES.has(clean.dash)) delete clean.dash;
   if (typeof clean.size === 'string' && !VALID_TLDRAW_SIZES.has(clean.size)) delete clean.size;
-  if (typeof clean.align === 'string' && !VALID_TLDRAW_ALIGNS.has(clean.align)) delete clean.align;
   if (typeof clean.font === 'string' && !VALID_TLDRAW_FONTS.has(clean.font)) delete clean.font;
   
   return clean;
@@ -69,6 +83,12 @@ function sanitizeShapeProps(props: Record<string, unknown>) {
  * @returns 过滤 + 修正后的安全属性对象
  */
 export function filterValidProps(editor: Editor, type: string, rawProps: Record<string, unknown>) {
+  // Pre-process hallucinated 'text' string before strict whitelist filtering
+  if (typeof rawProps.text === 'string' && !rawProps.richText) {
+    rawProps.richText = toRichText(rawProps.text);
+    delete rawProps.text;
+  }
+
   const cleanProps: Record<string, unknown> = {};
   
   let util;
@@ -94,6 +114,14 @@ export function filterValidProps(editor: Editor, type: string, rawProps: Record<
     } else {
       console.warn(`[Interceptor] Stripped illegal hallucinated property '${key}' from shape type '${type}'`);
     }
+  }
+
+  // Force autoSize to true and delete w/h for text shapes, 
+  // to prevent LLMs from generating very narrow or broken text bounding boxes.
+  if (type === 'text') {
+    cleanProps.autoSize = true;
+    delete cleanProps.w;
+    delete cleanProps.h;
   }
 
   return sanitizeShapeProps(cleanProps);
@@ -133,6 +161,15 @@ export const executeWithInterceptor = (editor: Editor, shapePayload: Record<stri
   // 2. Pre-sanitize props to avoid throwing transaction errors
   if (shape.props && typeof shape.props === 'object' && shape.props !== null) {
     shape.props = filterValidProps(editor, shape.type as string || 'geo', shape.props as Record<string, unknown>);
+  }
+
+  // 2.5 Sanitize Root Properties to prevent TLDraw crash
+  const allowedRootKeys = new Set(["id", "type", "x", "y", "rotation", "isLocked", "opacity", "meta", "props", "parentId", "index"]);
+  for (const key of Object.keys(shape)) {
+    if (!allowedRootKeys.has(key)) {
+      console.warn(`[Interceptor] Stripped illegal root property '${key}'`);
+      delete shape[key];
+    }
   }
 
   // 3. Try normal creation
@@ -186,6 +223,15 @@ export const executeUpdateWithInterceptor = (editor: Editor, shapePayload: Recor
   if (shape.props && typeof shape.props === 'object' && shape.props !== null) {
     const typeForProps = (shape.type as string) || editor.getShape(shape.id as TLShapeId)?.type || 'geo';
     shape.props = filterValidProps(editor, typeForProps, shape.props as Record<string, unknown>);
+  }
+
+  // 2.5 Sanitize Root Properties
+  const allowedRootKeysUpdate = new Set(["id", "type", "x", "y", "rotation", "isLocked", "opacity", "meta", "props", "parentId", "index"]);
+  for (const key of Object.keys(shape)) {
+    if (!allowedRootKeysUpdate.has(key)) {
+      console.warn(`[Interceptor Update] Stripped illegal root property '${key}'`);
+      delete shape[key];
+    }
   }
 
   // 3. Try normal update

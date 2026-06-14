@@ -8,7 +8,7 @@
   - `type`：`geo`（几何图形）或 `note`（便签）。
   - `x` 和 `y`：坐标偏移量（可选数字，极度推荐！）。默认屏幕中心为 [0, 0]，x 轴向右递增，y 轴向下递增。在画架构图等包含多个模块的复杂场景时，**绝对不要**把所有东西堆在 center，你必须通过计算 `x` 和 `y`（例如 `x: -300, y: -200` 或 `x: 300, y: 0` 等）来排布一个网格系统，避免模块重叠！默认模块宽150高100，所以节点间距至少需要250以上。
   - `props`：包含以下可选属性：
-    - `geo`：几何形状，支持 `rectangle` | `ellipse` | `triangle` | `diamond`（当 type 为 `geo` 时有效）。
+    - `geo`：几何形状，支持 `rectangle` | `ellipse` | `triangle` | `diamond` | `star` | `cloud` | `heart` | `hexagon` | `check-box` | `x-box`（当 type 为 `geo` 时有效）。
     - `color`：颜色，支持 `black` | `red` | `blue` | `green` | `orange` | `yellow`。
     - `w`：宽度数值（数字）。
     - `h`：高度数值（数字）。
